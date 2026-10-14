@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "F01_OCCLUSION_FIXTURE",
+  "w": 8,
+  "h": 8,
+  "defaultTile": "tile_grass_0",
+  "tiles": [],
+  "props": [
+    {
+      "id": "fridge_freestanding",
+      "asset": "spr_fridge_0",
+      "i": 3,
+      "j": 3,
+      "z": 0,
+      "footprint": [[3, 3]]
+    }
+  ]
+}

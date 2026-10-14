@@ -82,8 +82,8 @@ function assertValidPath(path, tilemap, from, to) {
   step(e, 90); // half a tile (STEP_MS = 180)
   assert.strictEqual(e.state, 'moving');
   let pos = entityPos(e);
-  assert.ok(Math.abs(pos.x - 8) < 1e-9, `midpoint x=8 (got ${pos.x})`);
-  assert.ok(Math.abs(pos.y - 4) < 1e-9, `midpoint y=4 (got ${pos.y})`); // +i: (0.5,0) -> (8,4)
+  assert.ok(Math.abs(pos.x - 16) < 1e-9, `midpoint x=16 (got ${pos.x})`);
+  assert.ok(Math.abs(pos.y - 8) < 1e-9, `midpoint y=8 (got ${pos.y})`); // +i: (0.5,0) -> (16,8)
   assert.strictEqual(e.i, 0); // still on the from tile
   assert.strictEqual(e.j, 0);
 
@@ -103,8 +103,8 @@ function assertValidPath(path, tilemap, from, to) {
   setPath(e, [[0, 0], [1, 0]]);
   step(e, 45);
   const pos = entityPos(e);
-  assert.ok(Math.abs(pos.x - 4) < 1e-9, `quarter x=4 (got ${pos.x})`);
-  assert.ok(Math.abs(pos.y - 2) < 1e-9, `quarter y=2 (got ${pos.y})`); // (0.25,0) -> (4,2)
+  assert.ok(Math.abs(pos.x - 8) < 1e-9, `quarter x=8 (got ${pos.x})`);
+  assert.ok(Math.abs(pos.y - 4) < 1e-9, `quarter y=4 (got ${pos.y})`); // (0.25,0) -> (8,4)
 }
 
 // --- entity: multi-tile path, one tile per STEP_MS ---

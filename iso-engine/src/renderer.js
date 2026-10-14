@@ -201,6 +201,67 @@ function drawEntity(ctx, d, cam, vw, vh, atlas) {
   ctx.fillRect(A.x - 8 * s, A.y - 44 * s, 16 * s, 16 * s);
 }
 
+// Screen-space AABB a drawable occupies (used for occlusion testing only;
+// approximate but matches the boxes drawProp/drawEntity actually paint).
+function screenBox(d, cam, vw, vh) {
+  const s = cam.zoom;
+  if (d.kind === 'entity') {
+    const A = toScreen({ x: d.x, y: d.y + TILE_H }, cam, vw, vh);
+    return { x0: A.x - 10 * s, x1: A.x + 10 * s, y0: A.y - 44 * s, y1: A.y };
+  }
+  // prop
+  const A = anchorScreen(d.i, d.j, d.z, cam, vw, vh);
+  if (d.asset.startsWith('spr_') && !d.asset.startsWith('spr_tree')) {
+    const h = propHeightPx(d.asset) * s;
+    const w = (32 + 32 * (Math.max(1, (d.footprint ?? [1]).length) - 1)) * s;
+    return { x0: A.x - w / 2, x1: A.x + w / 2, y0: A.y - h, y1: A.y };
+  }
+  if (d.asset.startsWith('spr_tree')) return { x0: A.x - 20 * s, x1: A.x + 20 * s, y0: A.y - 64 * s, y1: A.y };
+  if (d.asset.startsWith('wall_')) {
+    const zpx = TILE_H * s;
+    return { x0: A.x - 32 * s, x1: A.x + 32 * s, y0: A.y - TILE_H * s - zpx, y1: A.y };
+  }
+  return { x0: A.x - 16 * s, x1: A.x + 16 * s, y0: A.y - 32 * s, y1: A.y };
+}
+
+function boxesOverlap(a, b) {
+  return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+}
+
+// F-01 occlusion cue: true when any prop drawn after (on top of) the entity
+// this frame screen-overlaps it and is tall enough (propHeightPx > 0) to
+// visually cover it. Pure (Node-testable) — used by draw() and by tests.
+export function isEntityOccluded(drawables, cam, vw, vh) {
+  const entity = drawables.find((d) => d.kind === 'entity');
+  if (!entity) return false;
+  const ebox = screenBox(entity, cam, vw, vh);
+  for (const d of drawables) {
+    if (d.kind !== 'prop') continue;
+    if (d.depthKey <= entity.depthKey) continue; // drawn before the player, can't cover it
+    if (propHeightPx(d.asset) <= 0) continue;
+    if (boxesOverlap(ebox, screenBox(d, cam, vw, vh))) return true;
+  }
+  return false;
+}
+
+// Draw a translucent outline silhouette for the entity, on top of whatever
+// occluded it, so the player stays visually locatable (fix option (b)).
+function drawOcclusionCue(ctx, entity, cam, vw, vh) {
+  const A = toScreen({ x: entity.x, y: entity.y + TILE_H }, cam, vw, vh); // feet
+  const s = cam.zoom;
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = Math.max(1, 2 * s);
+  ctx.strokeRect(A.x - 10 * s, A.y - 44 * s, 20 * s, 44 * s);
+  ctx.fillStyle = '#3b6fd4';
+  ctx.globalAlpha = 0.35;
+  ctx.fillRect(A.x - 10 * s, A.y - 28 * s, 20 * s, 24 * s);
+  ctx.fillStyle = '#e8c39e';
+  ctx.fillRect(A.x - 8 * s, A.y - 44 * s, 16 * s, 16 * s);
+  ctx.restore();
+}
+
 // Draw a sorted drawable list onto a 2D context.
 export function draw(ctx, drawables, cam, vw, vh, atlas = null) {
   ctx.imageSmoothingEnabled = false;
@@ -209,6 +270,10 @@ export function draw(ctx, drawables, cam, vw, vh, atlas = null) {
     if (d.kind === 'tile') drawTile(ctx, d, cam, vw, vh, atlas);
     else if (d.kind === 'prop') drawProp(ctx, d, cam, vw, vh, atlas);
     else drawEntity(ctx, d, cam, vw, vh, atlas);
+  }
+  if (isEntityOccluded(drawables, cam, vw, vh)) {
+    const entity = drawables.find((d) => d.kind === 'entity');
+    drawOcclusionCue(ctx, entity, cam, vw, vh);
   }
 }
 

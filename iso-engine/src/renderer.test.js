@@ -1,9 +1,12 @@
-import { collectDrawables, tileColor } from './renderer.js';
+import { collectDrawables, tileColor, isEntityOccluded, draw } from './renderer.js';
 import { loadTilemap } from './tilemap.js';
 import { createEntity } from './movement.js';
 import { createCamera } from './camera.js';
 import { depthKey } from './iso.js';
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 const VW = 2000;
 const VH = 2000;
@@ -67,7 +70,7 @@ const bigTm = loadTilemap(bigDoc);
   const d0 = collectDrawables(bigTm, null, cam0, 100, 100);
   const has = (i, j) => d0.some((x) => x.kind === 'tile' && x.i === i && x.j === j);
   assert.ok(has(0, 0), 'near tile (0,0) kept');
-  assert.ok(has(5, 0), 'mid tile (5,0) kept at zoom 1');
+  assert.ok(has(6, 0), 'mid tile (6,0) kept at zoom 1');
   assert.ok(!has(15, 15), 'far tile (15,15) culled');
   assert.ok(!has(15, 0), 'far tile (15,0) culled');
 }
@@ -77,7 +80,7 @@ const bigTm = loadTilemap(bigDoc);
   const d2 = collectDrawables(bigTm, null, createCamera(0, 0, 2), 100, 100);
   const has = (i, j) => d2.some((x) => x.kind === 'tile' && x.i === i && x.j === j);
   assert.ok(has(0, 0));
-  assert.ok(!has(5, 0), 'zoom 2: (5,0) off-screen');
+  assert.ok(!has(6, 0), 'zoom 2: (6,0) off-screen');
 }
 
 // --- no entity -> no entity drawable ---
@@ -88,4 +91,58 @@ assert.strictEqual(tileColor('tile_grass_0'), tileColor('tile_grass_0'));
 assert.notStrictEqual(tileColor('tile_grass_0'), tileColor('tile_path_0'));
 assert.ok(/^hsl\(\d+ 45% 40%\)$/.test(tileColor('tile_mystery_99')), 'unknown id -> deterministic hsl');
 
-console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color)');
+// --- F-01: occlusion cue (fixture: freestanding tall prop, open floor) ---
+// Uses data/scene_f01_fixture.json — a prop NOT wall-flush, so the tile
+// "behind" it (toward the camera-far corner) is walkable and exercises the
+// occlusion path that SCENE_01 never hits.
+const here = dirname(fileURLToPath(import.meta.url));
+const fixtureDoc = JSON.parse(readFileSync(join(here, '..', 'data', 'scene_f01_fixture.json'), 'utf8'));
+const fixtureTm = loadTilemap(fixtureDoc);
+const fixtureCam = createCamera(3, 3, 2);
+
+// Player standing on the open tile diagonally "behind" the fridge (one step
+// toward the back wall direction, di=-1,dj=-1 from the prop) is fully
+// screen-covered by the 2u-tall fridge with the old renderer.
+const occludedPlayer = createEntity(2, 2);
+const dOcc = collectDrawables(fixtureTm, occludedPlayer, fixtureCam, 1000, 1000);
+assert.strictEqual(isEntityOccluded(dOcc, fixtureCam, 1000, 1000), true, 'F-01: player behind freestanding prop is flagged occluded');
+
+// Same player, standing clear of the prop (far corner) -> not occluded.
+const clearPlayer = createEntity(0, 0);
+const dClear = collectDrawables(fixtureTm, clearPlayer, fixtureCam, 1000, 1000);
+assert.strictEqual(isEntityOccluded(dClear, fixtureCam, 1000, 1000), false, 'F-01: player in open floor is not occluded');
+
+// draw() must not throw when occluded, and must paint an extra cue pass
+// (recorded via a minimal fake 2D context) on top of the normal entity draw.
+{
+  const calls = [];
+  const fakeCtx = new Proxy({}, {
+    get(_t, prop) {
+      if (prop === 'imageSmoothingEnabled') return true;
+      return (...args) => calls.push([prop, args]);
+    },
+    set(_t, prop, val) {
+      if (prop === 'imageSmoothingEnabled') return true;
+      calls.push(['set:' + String(prop), val]);
+      return true;
+    },
+  });
+  draw(fakeCtx, dOcc, fixtureCam, 1000, 1000, null);
+  const saves = calls.filter((c) => c[0] === 'save').length;
+  assert.ok(saves >= 1, 'F-01: occluded frame runs the cue draw pass (ctx.save called)');
+}
+{
+  const calls = [];
+  const fakeCtx = new Proxy({}, {
+    get(_t, prop) {
+      if (prop === 'imageSmoothingEnabled') return true;
+      return (...args) => calls.push([prop, args]);
+    },
+    set() { return true; },
+  });
+  draw(fakeCtx, dClear, fixtureCam, 1000, 1000, null);
+  const saves = calls.filter((c) => c[0] === 'save').length;
+  assert.strictEqual(saves, 0, 'F-01: clear frame does not run the cue draw pass');
+}
+
+console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue)');

@@ -64,7 +64,7 @@ iso-engine/ as root, so scene data lives at ../data/scene.json).
   </div>
 </header>
 <div id="wrap">
-  <canvas id="canvas" width="960" height="600"></canvas>
+  <canvas id="canvas" width="1024" height="700"></canvas>
   <div id="side">
     <div class="panel">
       <h2>scene</h2>
@@ -203,8 +203,8 @@ function loadFromText(text, name) {
 // --- rendering ----------------------------------------------------------------
 function centerCamera() {
   const maxZ = Math.max(0, ...doc.tiles.map((e) => e.z), ...doc.props.map((p) => p.z));
-  const minX = -(doc.h - 1) * 16 - 16, maxX = (doc.w - 1) * 16 + 16;
-  const minY = -maxZ * ELEV_PX, maxY = (doc.w + doc.h - 2) * 8 + TILE_H;
+  const minX = -(doc.h - 1) * (TILE_W / 2) - (TILE_W / 2), maxX = (doc.w - 1) * (TILE_W / 2) + (TILE_W / 2);
+  const minY = -maxZ * ELEV_PX, maxY = (doc.w + doc.h - 2) * (TILE_H / 2) + TILE_H;
   ox = Math.round(canvas.width / 2 - (minX + maxX) / 2);
   oy = Math.round(canvas.height / 2 - (minY + maxY) / 2);
 }
@@ -346,7 +346,7 @@ canvas.addEventListener('contextmenu', (e) => {
   else act(paintTile, i, j, doc.defaultTile, 0);
 });
 window.addEventListener('keydown', (e) => {
-  const step = 16;
+  const step = TILE_W / 2;
   if (e.key === 'ArrowLeft' || e.key === 'a') ox += step;
   else if (e.key === 'ArrowRight' || e.key === 'd') ox -= step;
   else if (e.key === 'ArrowUp' || e.key === 'w') oy += step;
