@@ -6,5 +6,8 @@
   "scripts": {
     "test": "node --test src tools",
     "serve": "node tools/serve.js"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
   }
 }

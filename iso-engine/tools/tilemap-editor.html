@@ -1,0 +1,420 @@
+<!doctype html>
+<!--
+tilemap-editor.html — iso 2.5D tilemap editor (Tooling; self-contained, inline JS).
+Served at http://localhost:8652/tools/tilemap-editor.html (tools/serve.js serves
+iso-engine/ as root, so scene data lives at ../data/scene.json).
+
+- Loads data/scene.json (tilemap schema v1) and renders the iso grid on canvas
+  using src/iso.js math (gridToWorld/worldToGrid/tileAnchor/depthKey/tileCorners)
+  and src/tilemap.js loadTilemap for validation. Projection is never re-derived.
+- Tile tool: left-click paints a tile (palette: tile_grass_0 / tile_path_0 /
+  tile_water_0) at elevation 0 or 1. Right-click resets a tile to default.
+- Prop tool: left-click places spr_tree_0 or wall_wood_1; right-click removes.
+- Save: serializes to tilemap schema v1 (stable key order, 2-space indent) and
+  downloads .json. Load: file input for a local tilemap JSON.
+- Tiles are stored SPARSE: a tile equal to defaultTile at z=0 is dropped from
+  tiles[] on save (matches data/scene.json conventions).
+- Placeholder palette below is the reference palette the renderer should match.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>iso tilemap editor</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: #14171c; color: #d7dce3; }
+  header { display: flex; gap: 16px; align-items: center; padding: 8px 12px; background: #1c2129; border-bottom: 1px solid #2c3440; flex-wrap: wrap; }
+  header h1 { font-size: 13px; margin: 0; color: #8fd0ff; }
+  .group { display: flex; gap: 6px; align-items: center; }
+  .group label { user-select: none; }
+  button, input[type=file] { background: #262d38; color: #d7dce3; border: 1px solid #3a4553; border-radius: 4px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  button:hover { background: #303948; }
+  button.active { background: #2f6f4f; border-color: #3f9c6e; color: #eafff3; }
+  #wrap { display: flex; gap: 12px; padding: 12px; }
+  #canvas { background: #0d0f13; border: 1px solid #2c3440; border-radius: 4px; image-rendering: pixelated; }
+  #side { width: 220px; display: flex; flex-direction: column; gap: 10px; }
+  .panel { background: #1c2129; border: 1px solid #2c3440; border-radius: 4px; padding: 8px 10px; }
+  .panel h2 { margin: 0 0 6px; font-size: 12px; color: #8fd0ff; }
+  .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  #status { padding: 6px 12px; border-top: 1px solid #2c3440; background: #1c2129; min-height: 1.4em; }
+  #status .ok { color: #7fd6a0; } #status .err { color: #ff8f8f; }
+  .hint { color: #7d8896; font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>iso tilemap editor</h1>
+  <div class="group">
+    <button id="tool-tile" class="active">tile</button>
+    <button id="tool-prop">prop</button>
+  </div>
+  <div class="group" id="tile-palette">
+    <label><input type="radio" name="tile" value="tile_grass_0" checked><span class="swatch" style="background:#57a05a"></span>grass</label>
+    <label><input type="radio" name="tile" value="tile_path_0"><span class="swatch" style="background:#c8a76a"></span>path</label>
+    <label><input type="radio" name="tile" value="tile_water_0"><span class="swatch" style="background:#4d7fd6"></span>water</label>
+    <label>z <select id="elev"><option value="0" selected>0</option><option value="1">1</option></select></label>
+  </div>
+  <div class="group" id="prop-palette" style="display:none">
+    <label><input type="radio" name="prop" value="spr_tree_0" checked>tree</label>
+    <label><input type="radio" name="prop" value="wall_wood_1">wall</label>
+  </div>
+  <div class="group">
+    <button id="save">save .json</button>
+    <label class="hint" style="user-select:none">load <input type="file" id="load" accept=".json,application/json"></label>
+  </div>
+</header>
+<div id="wrap">
+  <canvas id="canvas" width="960" height="600"></canvas>
+  <div id="side">
+    <div class="panel">
+      <h2>scene</h2>
+      <div id="info">loading…</div>
+    </div>
+    <div class="panel">
+      <h2>help</h2>
+      <div class="hint">
+        tile tool: L-click paint (grass/path/water, z 0/1); R-click reset to default.<br>
+        prop tool: L-click place (replaces prop on tile); R-click remove.<br>
+        arrows / WASD: pan. Picking is on the z=0 ground plane (v1).
+      </div>
+    </div>
+  </div>
+</div>
+<div id="status">ready</div>
+
+<script type="module">
+import { gridToWorld, worldToGrid, tileAnchor, depthKey, tileCorners, TILE_W, TILE_H, ELEV_PX } from '../src/iso.js';
+import { loadTilemap } from '../src/tilemap.js';
+
+// --- placeholder palette (reference for the renderer) -----------------------
+const PALETTE = {
+  tile_grass_0: { top: '#57a05a', l: '#3f7a42', r: '#356b39' },
+  tile_path_0:  { top: '#c8a76a', l: '#9c7d4a', r: '#8a6d3f' },
+  tile_water_0: { top: '#4d7fd6', l: '#3a63ad', r: '#33589a' },
+};
+const FALLBACK = { top: '#8a8a8a', l: '#6e6e6e', r: '#616161' };
+const PROP_COLORS = {
+  spr_tree_0: { trunk: '#7a5230', canopy: '#3e8e41', canopyDark: '#2f6b31' },
+  wall_wood_1: { top: '#a9825a', l: '#8a6a48', r: '#75583a' },
+};
+
+// --- state -------------------------------------------------------------------
+let doc = null;          // sparse tilemap doc: {version,w,h,defaultTile,tiles,props}
+let sourceName = '—';
+let tool = 'tile';
+let hover = null;        // {i,j}
+let ox = 0, oy = 0;      // screen offset of grid (0,0) top vertex
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// --- helpers -----------------------------------------------------------------
+function shade(hex, f) { // lighten (f>0) / darken (f<0)
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v + (f > 0 ? (255 - v) * f : v * f))));
+  return `rgb(${c(n >> 16 & 255)},${c(n >> 8 & 255)},${c(n & 255)})`;
+}
+function tileColor(t, z) {
+  const p = PALETTE[t] ?? FALLBACK;
+  return { top: z > 0 ? shade(p.top, 0.18) : p.top, l: p.l, r: p.r };
+}
+function nextPropId() {
+  let max = 0;
+  for (const p of doc.props) {
+    const m = /^p(\d+)$/.exec(p.id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `p${max + 1}`;
+}
+function propAt(i, j) {
+  return doc.props.find((p) => p.footprint.some(([fi, fj]) => fi === i && fj === j)) ?? null;
+}
+function tileEntry(i, j) {
+  return doc.tiles.find((e) => e.i === i && e.j === j) ?? null;
+}
+function inBounds(i, j) {
+  return Number.isInteger(i) && Number.isInteger(j) && i >= 0 && j >= 0 && i < doc.w && j < doc.h;
+}
+
+// --- editing -----------------------------------------------------------------
+function paintTile(i, j, t, z) {
+  if (!inBounds(i, j)) return `out of bounds (${i},${j})`;
+  const e = tileEntry(i, j);
+  if (t === doc.defaultTile && z === 0) {
+    if (e) doc.tiles = doc.tiles.filter((x) => x !== e); // sparse: drop default
+  } else {
+    if (e) { e.t = t; e.z = z; }
+    else doc.tiles.push({ i, j, t, z });
+  }
+  render();
+  return `tile (${i},${j}) = ${t} z${z}`;
+}
+function placeProp(asset, i, j) {
+  if (!inBounds(i, j)) return `out of bounds (${i},${j})`;
+  const existing = propAt(i, j);
+  if (existing) doc.props = doc.props.filter((p) => p !== existing);
+  const id = nextPropId();
+  doc.props.push({ id, asset, i, j, z: 0, footprint: [[i, j]] });
+  render();
+  return `placed ${asset} at (${i},${j}) [${id}]`;
+}
+function removePropAt(i, j) {
+  const p = propAt(i, j);
+  if (!p) return `no prop at (${i},${j})`;
+  doc.props = doc.props.filter((x) => x !== p);
+  render();
+  return `removed ${p.asset} [${p.id}] at (${i},${j})`;
+}
+
+// --- serialization (tilemap schema v1, stable key order) ---------------------
+function serializeTilemap(d) {
+  const out = {
+    version: 1,
+    w: d.w,
+    h: d.h,
+    defaultTile: d.defaultTile,
+    tiles: d.tiles.map((e) => ({ i: e.i, j: e.j, t: e.t, z: e.z })),
+    props: d.props.map((p) => ({ id: p.id, asset: p.asset, i: p.i, j: p.j, z: p.z, footprint: p.footprint })),
+  };
+  return JSON.stringify(out, null, 2) + '\n';
+}
+function applyTilemap(tm) {
+  // tm = loadTilemap(...) result; tm.raw is the normalized doc (z defaults filled,
+  // input order kept). Strip depthKey from props (not part of the schema).
+  doc = {
+    version: 1,
+    w: tm.w,
+    h: tm.h,
+    defaultTile: tm.defaultTile,
+    tiles: tm.raw.tiles.map((e) => ({ i: e.i, j: e.j, t: e.t, z: e.z })),
+    props: tm.raw.props.map((p) => ({ id: p.id, asset: p.asset, i: p.i, j: p.j, z: p.z, footprint: p.footprint })),
+  };
+  centerCamera();
+  render();
+}
+function loadFromText(text, name) {
+  const tm = loadTilemap(text); // validates schema v1
+  applyTilemap(tm);
+  sourceName = name;
+  status(`loaded ${name}: ${tm.w}x${tm.h}, ${doc.tiles.length} sparse tiles, ${doc.props.length} props`, 'ok');
+}
+
+// --- rendering ----------------------------------------------------------------
+function centerCamera() {
+  const maxZ = Math.max(0, ...doc.tiles.map((e) => e.z), ...doc.props.map((p) => p.z));
+  const minX = -(doc.h - 1) * 16 - 16, maxX = (doc.w - 1) * 16 + 16;
+  const minY = -maxZ * ELEV_PX, maxY = (doc.w + doc.h - 2) * 8 + TILE_H;
+  ox = Math.round(canvas.width / 2 - (minX + maxX) / 2);
+  oy = Math.round(canvas.height / 2 - (minY + maxY) / 2);
+}
+function diamond(c) {
+  ctx.beginPath();
+  ctx.moveTo(c.top.x, c.top.y);
+  ctx.lineTo(c.right.x, c.right.y);
+  ctx.lineTo(c.bottom.x, c.bottom.y);
+  ctx.lineTo(c.left.x, c.left.y);
+  ctx.closePath();
+}
+function quad(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let k = 1; k < 4; k++) ctx.lineTo(pts[k].x, pts[k].y);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawTile(i, j, t, z) {
+  const base = tileCorners(i, j, ox, oy);
+  const dy = -z * ELEV_PX;
+  const top = {
+    top: { x: base.top.x, y: base.top.y + dy },
+    right: { x: base.right.x, y: base.right.y + dy },
+    bottom: { x: base.bottom.x, y: base.bottom.y + dy },
+    left: { x: base.left.x, y: base.left.y + dy },
+  };
+  const c = tileColor(t, z);
+  if (z > 0) {
+    ctx.fillStyle = c.l;
+    quad([base.left, base.bottom, top.bottom, top.left]);
+    ctx.fillStyle = c.r;
+    quad([base.bottom, base.right, top.right, top.bottom]);
+  }
+  ctx.fillStyle = c.top;
+  diamond(top);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+function drawProp(p) {
+  const a = tileAnchor(p.i, p.j, ox, oy);
+  const y = a.y - p.z * ELEV_PX;
+  const c = PROP_COLORS[p.asset];
+  if (p.asset === 'spr_tree_0' && c) {
+    ctx.fillStyle = c.trunk;
+    ctx.fillRect(a.x - 2, y - 14, 4, 14);
+    ctx.fillStyle = c.canopyDark;
+    ctx.beginPath(); ctx.arc(a.x, y - 20, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = c.canopy;
+    ctx.beginPath(); ctx.arc(a.x - 2, y - 23, 7, 0, Math.PI * 2); ctx.fill();
+  } else if (p.asset === 'wall_wood_1' && c) {
+    const b = tileCorners(p.i, p.j, ox, oy);
+    const h = ELEV_PX; // 1 elevation unit
+    const up = (pt) => ({ x: pt.x, y: pt.y - h });
+    ctx.fillStyle = c.l;
+    quad([b.left, b.bottom, up(b.bottom), up(b.left)]);
+    ctx.fillStyle = c.r;
+    quad([b.bottom, b.right, up(b.right), up(b.bottom)]);
+    ctx.fillStyle = c.top;
+    diamond({ top: up(b.top), right: up(b.right), bottom: up(b.bottom), left: up(b.left) });
+    ctx.fill();
+  } else { // unknown asset: placeholder marker
+    ctx.strokeStyle = '#c9c9c9';
+    ctx.setLineDash([3, 3]);
+    const b = tileCorners(p.i, p.j, ox, oy);
+    diamond(b);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#c9c9c9';
+    ctx.font = '10px monospace';
+    ctx.fillText(p.asset, a.x - 20, y - 4);
+  }
+}
+function render() {
+  if (!doc) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const drawables = [];
+  for (let i = 0; i < doc.w; i++)
+    for (let j = 0; j < doc.h; j++) {
+      const e = tileEntry(i, j) ?? { t: doc.defaultTile, z: 0 };
+      drawables.push({ key: depthKey(i, j, e.z), kind: 'tile', i, j, t: e.t, z: e.z });
+    }
+  for (const p of doc.props) {
+    const maxSum = Math.max(...p.footprint.map(([fi, fj]) => fi + fj));
+    drawables.push({ key: depthKey(maxSum, 0, p.z), kind: 'prop', p });
+  }
+  drawables.sort((a, b) => a.key - b.key); // painter's: ascending depthKey
+  for (const d of drawables) d.kind === 'tile' ? drawTile(d.i, d.j, d.t, d.z) : drawProp(d.p);
+  if (hover && inBounds(hover.i, hover.j)) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    diamond(tileCorners(hover.i, hover.j, ox, oy));
+    ctx.stroke();
+  }
+  document.getElementById('info').innerHTML =
+    `${doc.w}x${doc.h} · default <b>${doc.defaultTile}</b><br>` +
+    `sparse tiles: ${doc.tiles.length} · props: ${doc.props.length}<br>source: ${sourceName}`;
+}
+
+// --- status -------------------------------------------------------------------
+function status(msg, cls) {
+  const el = document.getElementById('status');
+  el.innerHTML = `<span class="${cls ?? ''}">${msg}</span>`;
+}
+function act(fn, ...args) {
+  try {
+    const msg = fn(...args);
+    status(msg, 'ok');
+    render();
+  } catch (err) {
+    status(`error: ${err.message}`, 'err');
+  }
+}
+
+// --- input --------------------------------------------------------------------
+function pick(e) {
+  const r = canvas.getBoundingClientRect();
+  const g = worldToGrid(e.clientX - r.left, e.clientY - r.top, ox, oy);
+  return { i: Math.floor(g.i), j: Math.floor(g.j) };
+}
+canvas.addEventListener('mousemove', (e) => { hover = pick(e); render(); });
+canvas.addEventListener('mouseleave', () => { hover = null; render(); });
+canvas.addEventListener('click', (e) => {
+  const { i, j } = pick(e);
+  if (tool === 'tile') {
+    const t = document.querySelector('input[name=tile]:checked').value;
+    act(paintTile, i, j, t, Number(document.getElementById('elev').value));
+  } else {
+    const asset = document.querySelector('input[name=prop]:checked').value;
+    act(placeProp, asset, i, j);
+  }
+});
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const { i, j } = pick(e);
+  if (tool === 'prop') act(removePropAt, i, j);
+  else act(paintTile, i, j, doc.defaultTile, 0);
+});
+window.addEventListener('keydown', (e) => {
+  const step = 16;
+  if (e.key === 'ArrowLeft' || e.key === 'a') ox += step;
+  else if (e.key === 'ArrowRight' || e.key === 'd') ox -= step;
+  else if (e.key === 'ArrowUp' || e.key === 'w') oy += step;
+  else if (e.key === 'ArrowDown' || e.key === 's') oy -= step;
+  else return;
+  e.preventDefault();
+  render();
+});
+function setTool(t) {
+  tool = t;
+  document.getElementById('tool-tile').classList.toggle('active', t === 'tile');
+  document.getElementById('tool-prop').classList.toggle('active', t === 'prop');
+  document.getElementById('tile-palette').style.display = t === 'tile' ? '' : 'none';
+  document.getElementById('prop-palette').style.display = t === 'prop' ? '' : 'none';
+}
+document.getElementById('tool-tile').addEventListener('click', () => setTool('tile'));
+document.getElementById('tool-prop').addEventListener('click', () => setTool('prop'));
+
+// --- save / load ---------------------------------------------------------------
+document.getElementById('save').addEventListener('click', () => {
+  if (!doc) return;
+  const json = serializeTilemap(doc);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tilemap.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  status(`saved tilemap.json (${doc.tiles.length} tiles, ${doc.props.length} props)`, 'ok');
+});
+document.getElementById('load').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    loadFromText(await f.text(), f.name);
+  } catch (err) {
+    status(`load failed: ${err.message}`, 'err');
+  }
+  e.target.value = '';
+});
+
+// --- boot: fetch sample scene ---------------------------------------------------
+async function boot() {
+  const candidates = ['data/scene.json', '../data/scene.json', '/data/scene.json'];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      loadFromText(await res.text(), url);
+      return;
+    } catch { /* try next */ }
+  }
+  status('no scene.json found — use Load to open a tilemap JSON', 'err');
+}
+boot();
+
+// --- debug / CDP hook -----------------------------------------------------------
+window.__editor = {
+  get doc() { return doc; },
+  get tool() { return tool; },
+  paintTile, placeProp, removePropAt,
+  serializeTilemap, loadFromText, applyTilemap,
+  setTool, render,
+  status: () => document.getElementById('status').textContent,
+};
+</script>
+</body>
+</html>
