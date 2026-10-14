@@ -216,7 +216,7 @@ function drawProp(ctx, d, cam, vw, vh, atlas) {
 // Pick the hero animation frame index for an entity drawable at this instant.
 // walk: driven by step progress (deterministic, matches footstep cadence).
 // idle/interact: driven by wall-clock time (2-frame cycle, ~400ms/frame).
-function heroFrame(anim, animName, progress) {
+export function heroFrame(anim, animName, progress) {
   const frames = anim[animName] ?? anim.idle;
   if (animName === 'walk') {
     const idx = Math.floor(progress * frames.length) % frames.length;

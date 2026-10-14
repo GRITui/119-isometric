@@ -1,4 +1,4 @@
-import { collectDrawables, tileColor, isEntityOccluded, draw } from './renderer.js';
+import { collectDrawables, tileColor, isEntityOccluded, draw, heroFrame } from './renderer.js';
 import { loadTilemap } from './tilemap.js';
 import { createEntity } from './movement.js';
 import { createCamera } from './camera.js';
@@ -194,4 +194,23 @@ assert.strictEqual(isEntityOccluded(dClear, fixtureCam, 1000, 1000), false, 'F-0
   );
 }
 
-console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue, F-01 atlas regression)');
+// --- variable frame counts per animation: no uniform-grid assumption ---
+// walk may have 6 frames, idle 2 — heroFrame must index by that anim's own
+// length, not a shared/fixed constant.
+{
+  const anim = { walk: [10, 11, 12, 13, 14, 15], idle: [20, 21], interact: [30] };
+  // walk: progress sweeps 0..1 across all 6 frames
+  assert.strictEqual(heroFrame(anim, 'walk', 0), 10);
+  assert.strictEqual(heroFrame(anim, 'walk', 0.5), 13);
+  assert.strictEqual(heroFrame(anim, 'walk', 0.999), 15);
+  // idle: only 2 frames — must cycle mod 2, never read frame[2+]
+  const idleFrames = new Set();
+  for (let t = 0; t < 2000; t += 50) idleFrames.add(anim.idle[Math.floor(t / 400) % anim.idle.length]);
+  assert.ok([...idleFrames].every((f) => anim.idle.includes(f)), 'idle frame always one of its own 2 frames');
+  // interact: single-frame animation must not throw / divide-by-zero
+  assert.strictEqual(heroFrame(anim, 'interact', 0), 30);
+  // missing animName falls back to idle (anim.idle), not a fixed-size array
+  assert.strictEqual(anim.idle.includes(heroFrame(anim, 'missingState', 0)), true);
+}
+
+console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue, F-01 atlas regression, variable frame counts)');

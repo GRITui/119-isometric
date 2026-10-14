@@ -16,7 +16,10 @@ exceeded the output budget. This sheet locks the process so that doesn't recur.
 
 ## Per-batch verify (must pass before commit)
 - Re-decode pixels from the emitted PNG; assert decode == JSON (0 mismatch).
-- On-palette: <=16 distinct colors, all in the ISO ART SPEC v1 16-color set.
+- On-palette: <=16 distinct colors (tiles/props), all in the ISO ART SPEC v1
+  16-color set. Hero sprite sheets get a wider allowance: <=48 distinct
+  colors (animation/shading detail needs more ramp colors) — see
+  tools/verify-atlas-palette.js for the per-category limits.
 - Grid size correct (tile 32x16; sprite cell 64x64; wall h in {16,32}).
 - 4x nearest-neighbor sheet == exact nearest (for the contact/preview sheet only).
 - Exit 0. No exit 0 without a green verify.
