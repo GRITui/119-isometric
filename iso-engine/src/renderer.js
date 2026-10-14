@@ -122,9 +122,10 @@ function drawTile(ctx, d, cam, vw, vh, atlas) {
     const h = cell.h ?? sheet.cellH; // wall tiles are taller than cellH
     const dw = sheet.cellW * cam.zoom;
     const dh = h * cam.zoom;
-    // sprite's bottom (its own cellH) lands on the tile's top-face diamond;
-    // extra height (h - cellH) extrudes upward from there.
-    ctx.drawImage(img, cell.x, cell.y, sheet.cellW, h, l.x, top.y - (h - sheet.cellH) * cam.zoom, dw, dh);
+    // `top` is already the top vertex of this tile's top face at elevation z
+    // (gridToWorld raises it by z*ELEV_PX); the full extruded-box sprite
+    // (h px tall) is drawn from there straight down to the ground line.
+    ctx.drawImage(img, cell.x, cell.y, sheet.cellW, h, l.x, top.y, dw, dh);
     return;
   }
 
