@@ -1,11 +1,23 @@
 // tilemap.test.js — tilemap data model + loader (schema v1).
+// Uses a synthetic fixture (not data/scene.json, which is the real Scene 01
+// studio apartment — see scene01.test.js for scene-specific coverage).
 import { loadTilemap, SCHEMA_VERSION } from './tilemap.js';
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert';
 
-// --- load the real sample scene (data/scene.json) ---
-const sceneRaw = readFileSync(new URL('../data/scene.json', import.meta.url), 'utf8');
-const tm = loadTilemap(sceneRaw);
+const doc = {
+  version: 1, w: 16, h: 16, defaultTile: 'tile_grass_0',
+  tiles: [
+    { i: 0, j: 8, t: 'tile_path_0', z: 0 },
+    { i: 2, j: 2, t: 'tile_grass_0', z: 1 },
+    { i: 13, j: 13, t: 'tile_grass_0', z: 1 },
+  ],
+  props: [
+    { id: 'p1', asset: 'spr_tree_0', i: 3, j: 4, z: 0, footprint: [[3, 4]] },
+    { id: 'p2', asset: 'spr_tree_0', i: 12, j: 5, z: 0, footprint: [[12, 5]] },
+    { id: 'p3', asset: 'wall_wood_1', i: 5, j: 12, z: 0, footprint: [[5, 12]] },
+  ],
+};
+const tm = loadTilemap(doc);
 assert.strictEqual(tm.version, SCHEMA_VERSION);
 assert.strictEqual(tm.w, 16);
 assert.strictEqual(tm.h, 16);
@@ -19,12 +31,12 @@ assert.strictEqual(tm.tileAt(-1, 0), null, 'OOB -> null');
 assert.strictEqual(tm.tileAt(16, 0), null, 'OOB -> null');
 assert.strictEqual(tm.tileAt(0, 16), null, 'OOB -> null');
 
-// --- sample scene has exactly 2 elevation-1 tiles ---
+// --- fixture has exactly 2 elevation-1 tiles ---
 let elev = 0;
 for (let i = 0; i < 16; i++)
   for (let j = 0; j < 16; j++)
     if (tm.tileAt(i, j).z === 1) elev++;
-assert.strictEqual(elev, 2, 'exactly two z:1 tiles in sample scene');
+assert.strictEqual(elev, 2, 'exactly two z:1 tiles in fixture');
 
 // --- isBlocked: bounds / elevation / prop footprint / walkable ---
 assert.strictEqual(tm.isBlocked(-1, 0), true, 'OOB left blocked');

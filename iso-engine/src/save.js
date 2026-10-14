@@ -51,6 +51,10 @@ function canonicalize(state) {
   const pz = p.z === undefined ? 0 : p.z;
   if (!isInt(pz) || pz < 0)
     throw new Error(`save: player.z must be an integer >= 0 (got ${JSON.stringify(p.z)})`);
+  const FACINGS = ['n', 's', 'e', 'w'];
+  const facing = p.facing === undefined ? 's' : p.facing;
+  if (!FACINGS.includes(facing))
+    throw new Error(`save: player.facing must be one of n/s/e/w (got ${JSON.stringify(p.facing)})`);
 
   const c = state.camera;
   if (!c || typeof c !== 'object' || Array.isArray(c))
@@ -67,7 +71,7 @@ function canonicalize(state) {
   return {
     version: SAVE_VERSION,
     scene: state.scene,
-    player: { i: p.i, j: p.j, z: pz },
+    player: { i: p.i, j: p.j, z: pz, facing },
     camera: { cx: c.cx, cy: c.cy, zoom: c.zoom },
     props,
   };

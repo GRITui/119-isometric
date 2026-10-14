@@ -1,22 +1,43 @@
 // save.test.js — save/load state serializer (schema v1).
+// Uses a synthetic fixture (not data/save.json, which is the real Scene 01
+// save — see scene01.test.js for scene-specific coverage).
 import { serialize, parse, saveState, loadState } from './save.js';
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert';
 
-const sampleRaw = readFileSync(new URL('../data/save.json', import.meta.url), 'utf8');
-
-// --- parse the real sample save (data/save.json) ---
-const s = parse(sampleRaw);
+const fixture = {
+  version: 1, scene: 'scene.json',
+  player: { i: 8, j: 8, z: 0, facing: 's' },
+  camera: { cx: 8, cy: 8, zoom: 2 },
+  props: [
+    { id: 'p1', asset: 'spr_tree_0', i: 3, j: 4, z: 0, footprint: [[3, 4]] },
+    { id: 'p2', asset: 'spr_tree_0', i: 12, j: 5, z: 0, footprint: [[12, 5]] },
+    { id: 'p3', asset: 'wall_wood_1', i: 5, j: 12, z: 0, footprint: [[5, 12]] },
+  ],
+};
+const s = parse(JSON.stringify(fixture));
 assert.strictEqual(s.version, 1);
 assert.strictEqual(s.scene, 'scene.json');
-assert.deepStrictEqual(s.player, { i: 8, j: 8, z: 0 });
+assert.deepStrictEqual(s.player, { i: 8, j: 8, z: 0, facing: 's' });
 assert.deepStrictEqual(s.camera, { cx: 8, cy: 8, zoom: 2 });
 assert.strictEqual(s.props.length, 3);
 assert.deepStrictEqual(s.props[0], {
   id: 'p1', asset: 'spr_tree_0', i: 3, j: 4, z: 0, footprint: [[3, 4]],
 });
+
+// --- facing defaults to 's' when omitted ---
+{
+  const noFacing = parse(JSON.stringify({ ...fixture, player: { i: 1, j: 2, z: 0 } }));
+  assert.strictEqual(noFacing.player.facing, 's');
+}
+
+// --- facing rejects invalid values ---
+assert.throws(
+  () => parse(JSON.stringify({ ...fixture, player: { i: 1, j: 2, z: 0, facing: 'ne' } })),
+  /save:/, 'bad facing rejected',
+);
 
 // --- round-trip lossless ---
 assert.deepStrictEqual(parse(serialize(s)), s, 'parse(serialize(x)) deep-equals x');
@@ -25,7 +46,7 @@ assert.strictEqual(serialize(parse(serialize(s))), serialize(s), 'serialize is i
 // --- stable key order + 2-space indent (exact output) ---
 const mini = serialize({
   version: 1, scene: 'scene.json',
-  player: { i: 1, j: 2, z: 0 },
+  player: { i: 1, j: 2, z: 0, facing: 'n' },
   camera: { cx: 3, cy: 4, zoom: 2 },
   props: [],
 });
@@ -36,7 +57,8 @@ assert.strictEqual(mini, [
   '  "player": {',
   '    "i": 1,',
   '    "j": 2,',
-  '    "z": 0',
+  '    "z": 0,',
+  '    "facing": "n"',
   '  },',
   '  "camera": {',
   '    "cx": 3,',
@@ -51,7 +73,7 @@ assert.strictEqual(mini, [
 const shuffled = serialize({
   props: [],
   camera: { zoom: 2, cx: 3, cy: 4 },
-  player: { z: 0, i: 1, j: 2 },
+  player: { facing: 'n', z: 0, i: 1, j: 2 },
   scene: 'scene.json',
   version: 1,
 });
@@ -95,4 +117,4 @@ for (const [input, why] of bad) {
 }
 assert.throws(() => parse(42), /save:/, 'non-string input rejected');
 
-console.log('save.js: all tests passed (round-trip lossless, stable key order, fs save/load, malformed rejected)');
+console.log('save.js: all tests passed (round-trip lossless, stable key order, facing, fs save/load, malformed rejected)');

@@ -1,11 +1,19 @@
 {
   "version": 1,
   "scene": "scene.json",
-  "player": { "i": 8, "j": 8, "z": 0 },
-  "camera": { "cx": 8, "cy": 8, "zoom": 2 },
+  "player": { "i": 8, "j": 1, "z": 0, "facing": "s" },
+  "camera": { "cx": 8, "cy": 1, "zoom": 2 },
   "props": [
-    { "id": "p1", "asset": "spr_tree_0", "i": 3, "j": 4, "z": 0, "footprint": [[3, 4]] },
-    { "id": "p2", "asset": "spr_tree_0", "i": 12, "j": 5, "z": 0, "footprint": [[12, 5]] },
-    { "id": "p3", "asset": "wall_wood_1", "i": 5, "j": 12, "z": 0, "footprint": [[5, 12]] }
+    { "id": "p_fridge", "asset": "spr_fridge_0", "i": 1, "j": 1, "z": 0, "footprint": [[1, 1]] },
+    { "id": "p_stove", "asset": "spr_stove_0", "i": 1, "j": 2, "z": 0, "footprint": [[1, 2]] },
+    { "id": "p_counter", "asset": "spr_counter_0", "i": 1, "j": 3, "z": 0, "footprint": [[1, 3]] },
+    { "id": "p_desk", "asset": "spr_desk_0", "i": 1, "j": 4, "z": 0, "footprint": [[1, 4]] },
+    { "id": "p_chair", "asset": "spr_chair_0", "i": 2, "j": 4, "z": 0, "footprint": [[2, 4]] },
+    { "id": "p_bed", "asset": "spr_bed_0", "i": 1, "j": 6, "z": 0, "footprint": [[1, 5], [1, 6]] },
+    { "id": "p_lamp", "asset": "spr_lamp_0", "i": 1, "j": 7, "z": 0, "footprint": [[1, 7]] },
+    { "id": "p_sofa", "asset": "spr_sofa_0", "i": 5, "j": 1, "z": 0, "footprint": [[4, 1], [5, 1]] },
+    { "id": "p_shelf", "asset": "spr_shelf_0", "i": 7, "j": 1, "z": 0, "footprint": [[7, 1]] },
+    { "id": "p_plant", "asset": "spr_plant_0", "i": 9, "j": 1, "z": 0, "footprint": [[9, 1]] },
+    { "id": "p_crate", "asset": "spr_crate_0", "i": 8, "j": 7, "z": 0, "footprint": [[7, 6], [8, 7]] }
   ]
 }

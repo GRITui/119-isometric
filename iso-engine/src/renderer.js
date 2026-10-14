@@ -125,6 +125,19 @@ function anchorScreen(i, j, z, cam, vw, vh) {
   return toScreen({ x: a.x, y: a.y + TILE_H }, cam, vw, vh);
 }
 
+// Procedural placeholder heights (px at zoom 1) per SCENE_01_STUDIO.md.
+// fridge/shelf/lamp (+ walls, drawn separately via drawTile) = 2u (32px);
+// plant = ~1.5u (24px); everything else = 1u (16px).
+const PROP_HEIGHT_PX = {
+  spr_fridge_0: 32,
+  spr_shelf_0: 32,
+  spr_lamp_0: 32,
+  spr_plant_0: 24,
+};
+export function propHeightPx(asset) {
+  return PROP_HEIGHT_PX[asset] ?? 16;
+}
+
 function drawProp(ctx, d, cam, vw, vh, atlas) {
   const A = anchorScreen(d.i, d.j, d.z, cam, vw, vh);
   if (atlas && atlas.cells[d.asset]) {
@@ -133,6 +146,17 @@ function drawProp(ctx, d, cam, vw, vh, atlas) {
     return;
   }
   const s = cam.zoom;
+  if (d.asset.startsWith('spr_') && !d.asset.startsWith('spr_tree')) {
+    const h = propHeightPx(d.asset) * s;
+    const w = (16 + 16 * (Math.max(1, (d.footprint ?? [1]).length) - 1)) * s;
+    let h0 = 0;
+    for (let k = 0; k < d.asset.length; k++) h0 = (h0 * 31 + d.asset.charCodeAt(k)) >>> 0;
+    ctx.fillStyle = `hsl(${h0 % 360} 35% 45%)`;
+    ctx.fillRect(A.x - w / 2, A.y - h, w, h);
+    ctx.fillStyle = `hsl(${h0 % 360} 35% 32%)`;
+    ctx.fillRect(A.x - w / 2, A.y - h, w, 3 * s);
+    return;
+  }
   if (d.asset.startsWith('spr_tree')) {
     ctx.fillStyle = '#6b4a2b';
     ctx.fillRect(A.x - 2 * s, A.y - 10 * s, 4 * s, 10 * s);

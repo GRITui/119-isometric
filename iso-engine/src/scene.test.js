@@ -1,21 +1,35 @@
+// scene.test.js — scene assembly: generic engine behavior (camera, input,
+// A*, pan/zoom) against a synthetic fixture (not the real Scene 01 data —
+// see scene01.test.js for scene-specific coverage).
 import { createScene } from './scene.js';
 import { loadTilemap } from './tilemap.js';
-import { parse } from './save.js';
 import { worldToScreen, screenToGrid } from './camera.js';
 import { gridToWorld } from './iso.js';
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import assert from 'node:assert';
 
 const VW = 800;
 const VH = 600;
-const dataDir = fileURLToPath(new URL('../data/', import.meta.url));
 
-// --- real sample data (Backend deliverables) ---
-const sceneJson = JSON.parse(await readFile(new URL('../data/scene.json', import.meta.url), 'utf8'));
-const saveText = await readFile(new URL('../data/save.json', import.meta.url), 'utf8');
-const save = parse(saveText);
+const sceneJson = {
+  version: 1, w: 16, h: 16, defaultTile: 'tile_grass_0',
+  tiles: [
+    { i: 0, j: 8, t: 'tile_path_0', z: 0 },
+    { i: 2, j: 2, t: 'tile_grass_0', z: 1 },
+    { i: 13, j: 13, t: 'tile_grass_0', z: 1 },
+  ],
+  props: [
+    { id: 'p1', asset: 'spr_tree_0', i: 3, j: 4, z: 0, footprint: [[3, 4]] },
+    { id: 'p2', asset: 'spr_tree_0', i: 12, j: 5, z: 0, footprint: [[12, 5]] },
+    { id: 'p3', asset: 'wall_wood_1', i: 5, j: 12, z: 0, footprint: [[5, 12]] },
+  ],
+};
 const tilemap = loadTilemap(sceneJson);
+const save = {
+  version: 1, scene: 'scene.json',
+  player: { i: 8, j: 8, z: 0, facing: 's' },
+  camera: { cx: 8, cy: 8, zoom: 2 },
+  props: tilemap.props,
+};
 assert.strictEqual(tilemap.w, 16);
 assert.strictEqual(tilemap.h, 16);
 
@@ -80,7 +94,7 @@ assert.strictEqual(scene.player.state, 'idle');
   // player at (4,12); wall_wood_1 prop blocks (5,12)
   const blockedSave = {
     version: 1, scene: 'scene.json',
-    player: { i: 4, j: 12, z: 0 },
+    player: { i: 4, j: 12, z: 0, facing: 's' },
     camera: { cx: 4, cy: 12, zoom: 2 },
     props: tilemap.props,
   };
@@ -181,8 +195,5 @@ assert.strictEqual(scene.player.state, 'idle');
   assert.strictEqual(s.player.state, 'moving');
   assert.strictEqual(s.player.i, 8);
 }
-
-// dataDir kept for reference (scene/save loaded above via import.meta.url)
-void dataDir;
 
 console.log('scene.js: all tests passed (save restore, WASD map, queue, blocked, click A*, zoom, pan)');
