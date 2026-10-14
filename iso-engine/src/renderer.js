@@ -78,6 +78,8 @@ export function collectDrawables(tilemap, entity, camera, viewportW, viewportH) 
     const pos = entityPos(entity);
     out.push({
       kind: 'entity', i: entity.i, j: entity.j, x: pos.x, y: pos.y, z: entity.z,
+      facing: entity.facing ?? 's', state: entity.state, action: entity.action ?? null,
+      progress: entity.progress ?? 0,
       depthKey: depthKey(entity.i, entity.j, entity.z),
     });
   }
@@ -94,6 +96,18 @@ function poly(ctx, pts) {
   ctx.fill();
 }
 
+// Look up an atlas tile/sprite cell + its sheet image. Returns null if the
+// atlas or the named cell is absent (caller falls back to placeholder).
+function atlasCell(atlas, table, name) {
+  if (!atlas) return null;
+  const cell = atlas[table][name];
+  if (!cell) return null;
+  const img = atlas.images[cell.sheet];
+  if (!img || !img.complete || img.naturalWidth === 0) return null; // not loaded yet
+  const sheet = atlas.sheets[cell.sheet];
+  return { cell, img, sheet };
+}
+
 function drawTile(ctx, d, cam, vw, vh, atlas) {
   const zpx = d.z * TILE_H * cam.zoom;
   const top = toScreen(gridToWorld(d.i, d.j, d.z), cam, vw, vh); // top vertex of top face
@@ -101,6 +115,18 @@ function drawTile(ctx, d, cam, vw, vh, atlas) {
   const b = { x: top.x, y: top.y + TILE_H * cam.zoom };
   const l = { x: top.x - 32 * cam.zoom, y: top.y + 16 * cam.zoom };
   const color = tileColor(d.t);
+
+  const found = atlasCell(atlas, 'tiles', d.t);
+  if (found) {
+    const { cell, img, sheet } = found;
+    const h = cell.h ?? sheet.cellH; // wall tiles are taller than cellH
+    const dw = sheet.cellW * cam.zoom;
+    const dh = h * cam.zoom;
+    // sprite's bottom (its own cellH) lands on the tile's top-face diamond;
+    // extra height (h - cellH) extrudes upward from there.
+    ctx.drawImage(img, cell.x, cell.y, sheet.cellW, h, l.x, top.y - (h - sheet.cellH) * cam.zoom, dw, dh);
+    return;
+  }
 
   if (d.z > 0) {
     const gb = { x: b.x, y: b.y + zpx };
@@ -111,13 +137,8 @@ function drawTile(ctx, d, cam, vw, vh, atlas) {
     ctx.fillStyle = shade(color, -26);
     poly(ctx, [r, b, gb, gr]);
   }
-  if (atlas && atlas.cells[d.t]) {
-    const cell = atlas.cells[d.t];
-    ctx.drawImage(cell.img, l.x, top.y, 64 * cam.zoom, TILE_H * cam.zoom);
-  } else {
-    ctx.fillStyle = color;
-    poly(ctx, [top, r, b, l]);
-  }
+  ctx.fillStyle = color;
+  poly(ctx, [top, r, b, l]);
 }
 
 // Feet anchor of a prop/entity in screen px (tile bottom vertex).
@@ -141,9 +162,13 @@ export function propHeightPx(asset) {
 
 function drawProp(ctx, d, cam, vw, vh, atlas) {
   const A = anchorScreen(d.i, d.j, d.z, cam, vw, vh);
-  if (atlas && atlas.cells[d.asset]) {
-    const cell = atlas.cells[d.asset];
-    ctx.drawImage(cell.img, A.x - (cell.w * cam.zoom) / 2, A.y - cell.h * cam.zoom, cell.w * cam.zoom, cell.h * cam.zoom);
+  const found = atlasCell(atlas, 'sprites', d.asset);
+  if (found) {
+    const { cell, img } = found;
+    const w = cell.w * cam.zoom;
+    const h = cell.h * cam.zoom;
+    // anchor is always bottom-center per ATLAS_SCHEMA
+    ctx.drawImage(img, cell.x, cell.y, cell.w, cell.h, A.x - w / 2, A.y - h, w, h);
     return;
   }
   const s = cam.zoom;
@@ -187,13 +212,42 @@ function drawProp(ctx, d, cam, vw, vh, atlas) {
   }
 }
 
+// Pick the hero animation frame index for an entity drawable at this instant.
+// walk: driven by step progress (deterministic, matches footstep cadence).
+// idle/interact: driven by wall-clock time (2-frame cycle, ~400ms/frame).
+function heroFrame(anim, animName, progress) {
+  const frames = anim[animName] ?? anim.idle;
+  if (animName === 'walk') {
+    const idx = Math.floor(progress * frames.length) % frames.length;
+    return frames[idx];
+  }
+  const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  return frames[Math.floor(t / 400) % frames.length];
+}
+
 function drawEntity(ctx, d, cam, vw, vh, atlas) {
   const A = toScreen({ x: d.x, y: d.y + TILE_H }, cam, vw, vh); // feet
   const s = cam.zoom;
-  if (atlas && atlas.cells['spr_player_0']) {
-    const cell = atlas.cells['spr_player_0'];
-    ctx.drawImage(cell.img, A.x - (cell.w * s) / 2, A.y - cell.h * s, cell.w * s, cell.h * s);
-    return;
+  if (atlas && atlas.animations && atlas.animations.hero) {
+    const dirAnim = atlas.animations.hero[d.facing.toUpperCase()];
+    if (dirAnim) {
+      const animName = d.action === 'interact' ? 'interact' : (d.state === 'moving' ? 'walk' : 'idle');
+      const frame = heroFrame(dirAnim, animName, d.progress);
+      const sheetIdx = atlas.heroSheet;
+      const img = atlas.images[sheetIdx];
+      const sheet = atlas.sheets[sheetIdx];
+      if (img && img.complete && img.naturalWidth > 0) {
+        const col = frame % sheet.cols;
+        const row = Math.floor(frame / sheet.cols);
+        const w = sheet.cellW * s;
+        const h = sheet.cellH * s;
+        ctx.drawImage(
+          img, col * sheet.cellW, row * sheet.cellH, sheet.cellW, sheet.cellH,
+          A.x - w / 2, A.y - h, w, h,
+        );
+        return;
+      }
+    }
   }
   ctx.fillStyle = '#3b6fd4'; // body
   ctx.fillRect(A.x - 10 * s, A.y - 28 * s, 20 * s, 24 * s);
@@ -292,18 +346,26 @@ export function createRenderer(canvas, tilemap) {
   };
 }
 
-// Browser: load an atlas manifest ({ version, cells: [{ name, src, w, h }] })
-// and its PNGs. Returns null when the manifest is missing (404) so the
+// Browser: load an atlas manifest (ATLAS_SCHEMA.md: { sheets, tiles, sprites,
+// animations }) and its sheet PNGs. Returns null when missing (404) so the
 // procedural placeholder keeps rendering.
 export async function loadAtlas(manifestUrl) {
   const res = await fetch(manifestUrl);
   if (!res.ok) return null;
   const manifest = await res.json();
-  const cells = {};
-  for (const c of manifest.cells ?? []) {
+  const images = (manifest.sheets ?? []).map((sheet) => {
     const img = new Image();
-    img.src = c.src;
-    cells[c.name] = { img, w: c.w, h: c.h };
-  }
-  return { version: manifest.version, cells };
+    img.src = sheet.file;
+    return img;
+  });
+  const heroSheet = (manifest.sheets ?? []).findIndex((s) => /hero\.png$/.test(s.file));
+  return {
+    version: manifest.version,
+    sheets: manifest.sheets ?? [],
+    tiles: manifest.tiles ?? {},
+    sprites: manifest.sprites ?? {},
+    animations: manifest.animations ?? {},
+    heroSheet: heroSheet < 0 ? null : heroSheet,
+    images,
+  };
 }

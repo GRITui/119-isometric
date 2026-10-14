@@ -6,7 +6,7 @@
 // events + requestAnimationFrame (browser only).
 
 import { createCamera, screenToGrid, panByScreen, ZOOM_MIN, ZOOM_MAX, roomPixelSize, roomFits, fitZoom } from './camera.js';
-import { createEntity, setPath, step, tryStepDir, findPath, entityPos, INPUT_DIRS, STEP_MS } from './movement.js';
+import { createEntity, setPath, step, tryStepDir, findPath, entityPos, triggerInteract, INPUT_DIRS, STEP_MS } from './movement.js';
 import { createRenderer, loadAtlas } from './renderer.js';
 
 // opts: { tilemap, save?, width?, height?, autoFrame? }
@@ -20,7 +20,7 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
     ? createCamera(save.camera.cx, save.camera.cy, save.camera.zoom)
     : createCamera(tilemap.w / 2, tilemap.h / 2);
   const player = save
-    ? createEntity(save.player.i, save.player.j, save.player.z ?? 0)
+    ? createEntity(save.player.i, save.player.j, save.player.z ?? 0, save.player.facing ?? 's')
     : createEntity(Math.floor(tilemap.w / 2), Math.floor(tilemap.h / 2));
 
   const scene = { tilemap, camera, player, width, height, renderer: null };
@@ -52,6 +52,9 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
     camera.cx = n.cx;
     camera.cy = n.cy;
   };
+
+  // 'E' / interact key: plays the hero's interact animation in place.
+  scene.handleInteract = () => triggerInteract(player);
 
   // Wheel / +/-: integer zoom, clamped 1..3 (HIRES_V2).
   scene.handleZoom = (delta) => {
@@ -131,6 +134,7 @@ export async function initBrowserScene(canvas) {
     const k = e.key.toLowerCase();
     if (k === '+' || k === '=') { scene.handleZoom(1); return; }
     if (k === '-' || k === '_') { scene.handleZoom(-1); return; }
+    if (k === 'e') { scene.handleInteract(); return; }
     if (k in INPUT_DIRS) {
       e.preventDefault();
       scene.handleKey(k);

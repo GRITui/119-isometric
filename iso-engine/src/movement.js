@@ -17,12 +17,35 @@ export const INPUT_DIRS = {
   d: [0, -1], arrowright: [0, -1],
 };
 
-// entity = { i, j, z, path, pathIdx, progress, queue, state }
+// entity = { i, j, z, path, pathIdx, progress, queue, state, facing, action, actionTimer }
 //   path: [[i, j], ...] with path[0] == current tile; pathIdx = tile index
 //   currently occupied; progress in [0, 1) = fraction of the move from
 //   path[pathIdx] to path[pathIdx+1]. state: 'idle' | 'moving' | 'blocked'.
-export function createEntity(i, j, z = 0) {
-  return { i, j, z, path: null, pathIdx: 0, progress: 0, queue: [], state: 'idle' };
+//   facing: 'n'|'s'|'e'|'w' (last movement direction; default 's' per save
+//   schema). action: null | 'interact' with actionTimer ms remaining
+//   (triggerInteract()); drives the hero interact animation.
+export function createEntity(i, j, z = 0, facing = 's') {
+  return {
+    i, j, z, path: null, pathIdx: 0, progress: 0, queue: [], state: 'idle',
+    facing, action: null, actionTimer: 0,
+  };
+}
+
+// i-axis -> N/S, j-axis -> E/W (matches wall placement: i=0 wall is NW-side,
+// j=0 wall is NE-side, so +i/+j move away from those walls toward S/W resp.).
+export function facingFor(di, dj) {
+  if (di < 0) return 'n';
+  if (di > 0) return 's';
+  if (dj > 0) return 'w';
+  if (dj < 0) return 'e';
+  return null;
+}
+
+// Start (or restart) a timed interact animation. No-op while moving.
+export function triggerInteract(entity, ms = 500) {
+  if (entity.state === 'moving') return;
+  entity.action = 'interact';
+  entity.actionTimer = ms;
 }
 
 // Assign a path. path[0] must be the entity's current tile.
@@ -95,6 +118,8 @@ export function findPath(tilemap, from, to) {
 export function tryStepDir(entity, di, dj, tilemap) {
   const ti = entity.i + di;
   const tj = entity.j + dj;
+  const f = facingFor(di, dj);
+  if (f) entity.facing = f;
   if (tilemap.isBlocked(ti, tj)) {
     entity.path = null;
     entity.pathIdx = 0;
@@ -102,6 +127,8 @@ export function tryStepDir(entity, di, dj, tilemap) {
     entity.state = 'blocked';
     return false;
   }
+  entity.action = null;
+  entity.actionTimer = 0;
   setPath(entity, [[entity.i, entity.j], [ti, tj]]);
   return true;
 }
@@ -111,12 +138,22 @@ export function tryStepDir(entity, di, dj, tilemap) {
 // entity.i/j track the tile currently occupied.
 export function step(entity, dt, path = null, stepMs = STEP_MS) {
   if (path) setPath(entity, path);
+  if (entity.actionTimer > 0) {
+    entity.actionTimer -= dt;
+    if (entity.actionTimer <= 0) {
+      entity.actionTimer = 0;
+      entity.action = null;
+    }
+  }
   if (entity.state !== 'moving' || !entity.path) return entity;
   entity.progress += dt / stepMs;
   while (entity.progress >= 1) {
     entity.progress -= 1;
+    const [pi, pj] = [entity.i, entity.j];
     entity.pathIdx += 1;
     const [ni, nj] = entity.path[entity.pathIdx];
+    const f = facingFor(ni - pi, nj - pj);
+    if (f) entity.facing = f;
     entity.i = ni;
     entity.j = nj;
     if (entity.pathIdx >= entity.path.length - 1) {
