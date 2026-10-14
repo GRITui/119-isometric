@@ -114,7 +114,7 @@ assert.strictEqual(scene.player.state, 'idle');
   const w = gridToWorld(8.5, 10.5, 0);
   const sc = worldToScreen({ i: 8.5, j: 10.5, z: 0 }, s.camera, VW, VH);
   assert.strictEqual(sc.x, (w.x - 0) * 2 + VW / 2); // camera at (8,8): world px 0
-  assert.strictEqual(sc.y, (w.y - 128) * 2 + VH / 2);
+  assert.strictEqual(sc.y, (w.y - 256) * 2 + VH / 2);
   s.handleClick(sc.x, sc.y);
   assert.strictEqual(s.player.state, 'moving');
   s.update(180 * 3); // 2 tiles
@@ -144,14 +144,13 @@ assert.strictEqual(scene.player.state, 'idle');
   }
 }
 
-// --- zoom: integer, clamped 1..4 ---
+// --- zoom: integer, clamped 1..3 (HIRES_V2) ---
 {
   const s = createScene({ tilemap, save, width: VW, height: VH });
   s.handleZoom(1);
   assert.strictEqual(s.camera.zoom, 3);
   s.handleZoom(100);
-  assert.strictEqual(s.camera.zoom, 4); // clamped at max (one step per call)
-  s.handleZoom(-1);
+  assert.strictEqual(s.camera.zoom, 3); // clamped at max (one step per call)
   s.handleZoom(-1);
   s.handleZoom(-1);
   s.handleZoom(-100);
@@ -164,8 +163,8 @@ assert.strictEqual(scene.player.state, 'idle');
 {
   const s = createScene({ tilemap, save, width: VW, height: VH });
   s.handlePan(160, 0);
-  assert.ok(Math.abs(s.camera.cx - 5.5) < 1e-9, `cx 5.5 (got ${s.camera.cx})`);
-  assert.ok(Math.abs(s.camera.cy - 10.5) < 1e-9, `cy 10.5 (got ${s.camera.cy})`);
+  assert.ok(Math.abs(s.camera.cx - 6.75) < 1e-9, `cx 6.75 (got ${s.camera.cx})`);
+  assert.ok(Math.abs(s.camera.cy - 9.25) < 1e-9, `cy 9.25 (got ${s.camera.cy})`);
   s.handlePan(-100000, 0);
   assert.strictEqual(s.camera.cx, 16); // dragged left -> focus clamps to right edge
   s.handlePan(100000, 0);

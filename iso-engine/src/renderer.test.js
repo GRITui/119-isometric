@@ -67,7 +67,7 @@ const bigTm = loadTilemap(bigDoc);
   const d0 = collectDrawables(bigTm, null, cam0, 100, 100);
   const has = (i, j) => d0.some((x) => x.kind === 'tile' && x.i === i && x.j === j);
   assert.ok(has(0, 0), 'near tile (0,0) kept');
-  assert.ok(has(7, 0), 'mid tile (7,0) kept at zoom 1');
+  assert.ok(has(5, 0), 'mid tile (5,0) kept at zoom 1');
   assert.ok(!has(15, 15), 'far tile (15,15) culled');
   assert.ok(!has(15, 0), 'far tile (15,0) culled');
 }
@@ -77,7 +77,7 @@ const bigTm = loadTilemap(bigDoc);
   const d2 = collectDrawables(bigTm, null, createCamera(0, 0, 2), 100, 100);
   const has = (i, j) => d2.some((x) => x.kind === 'tile' && x.i === i && x.j === j);
   assert.ok(has(0, 0));
-  assert.ok(!has(7, 0), 'zoom 2: (7,0) off-screen');
+  assert.ok(!has(5, 0), 'zoom 2: (5,0) off-screen');
 }
 
 // --- no entity -> no entity drawable ---
