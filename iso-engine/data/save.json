@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "scene": "scene.json",
+  "player": { "i": 8, "j": 8, "z": 0 },
+  "camera": { "cx": 8, "cy": 8, "zoom": 2 },
+  "props": [
+    { "id": "p1", "asset": "spr_tree_0", "i": 3, "j": 4, "z": 0, "footprint": [[3, 4]] },
+    { "id": "p2", "asset": "spr_tree_0", "i": 12, "j": 5, "z": 0, "footprint": [[12, 5]] },
+    { "id": "p3", "asset": "wall_wood_1", "i": 5, "j": 12, "z": 0, "footprint": [[5, 12]] }
+  ]
+}
