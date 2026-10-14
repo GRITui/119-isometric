@@ -51,8 +51,9 @@ function toScreen(wp, cam, vw, vh) {
 export function collectDrawables(tilemap, entity, camera, viewportW, viewportH) {
   const out = [];
   const z = camera.zoom;
-  // margin: half a tile diagonal + prop height headroom, scaled by zoom
-  const margin = (TILE_H * z) + 48 * z;
+  // margin: half a tile diagonal + prop height headroom (v2: 128px sprite
+  // canvas), scaled by zoom
+  const margin = (TILE_H * z) + 96 * z;
 
   for (let i = 0; i < tilemap.w; i++) {
     for (let j = 0; j < tilemap.h; j++) {
@@ -60,7 +61,7 @@ export function collectDrawables(tilemap, entity, camera, viewportW, viewportH) 
       if (!tile) continue;
       const s = worldToScreen({ i, j, z: 0 }, camera, viewportW, viewportH);
       if (
-        s.x + 16 * z < -margin || s.x - 16 * z > viewportW + margin ||
+        s.x + 32 * z < -margin || s.x - 32 * z > viewportW + margin ||
         s.y + TILE_H * z < -margin || s.y > viewportH + margin
       ) continue;
       out.push({ kind: 'tile', i, j, t: tile.t, z: tile.z, depthKey: depthKey(i, j, tile.z) });
@@ -96,9 +97,9 @@ function poly(ctx, pts) {
 function drawTile(ctx, d, cam, vw, vh, atlas) {
   const zpx = d.z * TILE_H * cam.zoom;
   const top = toScreen(gridToWorld(d.i, d.j, d.z), cam, vw, vh); // top vertex of top face
-  const r = { x: top.x + 16 * cam.zoom, y: top.y + 8 * cam.zoom };
+  const r = { x: top.x + 32 * cam.zoom, y: top.y + 16 * cam.zoom };
   const b = { x: top.x, y: top.y + TILE_H * cam.zoom };
-  const l = { x: top.x - 16 * cam.zoom, y: top.y + 8 * cam.zoom };
+  const l = { x: top.x - 32 * cam.zoom, y: top.y + 16 * cam.zoom };
   const color = tileColor(d.t);
 
   if (d.z > 0) {
@@ -112,7 +113,7 @@ function drawTile(ctx, d, cam, vw, vh, atlas) {
   }
   if (atlas && atlas.cells[d.t]) {
     const cell = atlas.cells[d.t];
-    ctx.drawImage(cell.img, l.x, top.y, 32 * cam.zoom, TILE_H * cam.zoom);
+    ctx.drawImage(cell.img, l.x, top.y, 64 * cam.zoom, TILE_H * cam.zoom);
   } else {
     ctx.fillStyle = color;
     poly(ctx, [top, r, b, l]);
@@ -125,17 +126,17 @@ function anchorScreen(i, j, z, cam, vw, vh) {
   return toScreen({ x: a.x, y: a.y + TILE_H }, cam, vw, vh);
 }
 
-// Procedural placeholder heights (px at zoom 1) per SCENE_01_STUDIO.md.
-// fridge/shelf/lamp (+ walls, drawn separately via drawTile) = 2u (32px);
-// plant = ~1.5u (24px); everything else = 1u (16px).
+// Procedural placeholder heights (px at zoom 1) per SCENE_01_STUDIO.md (v2).
+// fridge/shelf/lamp (+ walls, drawn separately via drawTile) = 2u (64px);
+// plant = ~1.5u (48px); everything else = 1u (32px).
 const PROP_HEIGHT_PX = {
-  spr_fridge_0: 32,
-  spr_shelf_0: 32,
-  spr_lamp_0: 32,
-  spr_plant_0: 24,
+  spr_fridge_0: 64,
+  spr_shelf_0: 64,
+  spr_lamp_0: 64,
+  spr_plant_0: 48,
 };
 export function propHeightPx(asset) {
-  return PROP_HEIGHT_PX[asset] ?? 16;
+  return PROP_HEIGHT_PX[asset] ?? 32;
 }
 
 function drawProp(ctx, d, cam, vw, vh, atlas) {
@@ -148,32 +149,32 @@ function drawProp(ctx, d, cam, vw, vh, atlas) {
   const s = cam.zoom;
   if (d.asset.startsWith('spr_') && !d.asset.startsWith('spr_tree')) {
     const h = propHeightPx(d.asset) * s;
-    const w = (16 + 16 * (Math.max(1, (d.footprint ?? [1]).length) - 1)) * s;
+    const w = (32 + 32 * (Math.max(1, (d.footprint ?? [1]).length) - 1)) * s;
     let h0 = 0;
     for (let k = 0; k < d.asset.length; k++) h0 = (h0 * 31 + d.asset.charCodeAt(k)) >>> 0;
     ctx.fillStyle = `hsl(${h0 % 360} 35% 45%)`;
     ctx.fillRect(A.x - w / 2, A.y - h, w, h);
     ctx.fillStyle = `hsl(${h0 % 360} 35% 32%)`;
-    ctx.fillRect(A.x - w / 2, A.y - h, w, 3 * s);
+    ctx.fillRect(A.x - w / 2, A.y - h, w, 6 * s);
     return;
   }
   if (d.asset.startsWith('spr_tree')) {
     ctx.fillStyle = '#6b4a2b';
-    ctx.fillRect(A.x - 2 * s, A.y - 10 * s, 4 * s, 10 * s);
+    ctx.fillRect(A.x - 4 * s, A.y - 20 * s, 8 * s, 20 * s);
     ctx.fillStyle = '#3e7d32';
     ctx.beginPath();
-    ctx.moveTo(A.x, A.y - 32 * s);
-    ctx.lineTo(A.x + 10 * s, A.y - 10 * s);
-    ctx.lineTo(A.x - 10 * s, A.y - 10 * s);
+    ctx.moveTo(A.x, A.y - 64 * s);
+    ctx.lineTo(A.x + 20 * s, A.y - 20 * s);
+    ctx.lineTo(A.x - 20 * s, A.y - 20 * s);
     ctx.closePath();
     ctx.fill();
   } else if (d.asset.startsWith('wall_')) {
-    // 16px-tall (1 elevation unit) extruded box, tile-sized top face
+    // 32px-tall (1 elevation unit) extruded box, tile-sized top face
     const zpx = TILE_H * s;
     const t = { x: A.x, y: A.y - TILE_H * s - zpx }; // top vertex of box top face (ground top vertex raised by z=1)
-    const tr = { x: t.x + 16 * s, y: t.y + 8 * s };
+    const tr = { x: t.x + 32 * s, y: t.y + 16 * s };
     const tb = { x: t.x, y: t.y + TILE_H * s };
-    const tl = { x: t.x - 16 * s, y: t.y + 8 * s };
+    const tl = { x: t.x - 32 * s, y: t.y + 16 * s };
     ctx.fillStyle = shade('#8a6a42', -14);
     poly(ctx, [tl, tb, { x: tb.x, y: tb.y + zpx }, { x: tl.x, y: tl.y + zpx }]);
     ctx.fillStyle = shade('#8a6a42', -26);
@@ -182,7 +183,7 @@ function drawProp(ctx, d, cam, vw, vh, atlas) {
     poly(ctx, [t, tr, tb, tl]);
   } else {
     ctx.fillStyle = '#777';
-    ctx.fillRect(A.x - 8 * s, A.y - 16 * s, 16 * s, 16 * s);
+    ctx.fillRect(A.x - 16 * s, A.y - 32 * s, 32 * s, 32 * s);
   }
 }
 
@@ -195,9 +196,9 @@ function drawEntity(ctx, d, cam, vw, vh, atlas) {
     return;
   }
   ctx.fillStyle = '#3b6fd4'; // body
-  ctx.fillRect(A.x - 5 * s, A.y - 14 * s, 10 * s, 12 * s);
+  ctx.fillRect(A.x - 10 * s, A.y - 28 * s, 20 * s, 24 * s);
   ctx.fillStyle = '#e8c39e'; // head
-  ctx.fillRect(A.x - 4 * s, A.y - 22 * s, 8 * s, 8 * s);
+  ctx.fillRect(A.x - 8 * s, A.y - 44 * s, 16 * s, 16 * s);
 }
 
 // Draw a sorted drawable list onto a 2D context.

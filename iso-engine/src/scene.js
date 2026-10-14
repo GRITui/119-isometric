@@ -5,13 +5,17 @@
 // handlePan/handleZoom/update). initBrowserScene() wires canvas + DOM
 // events + requestAnimationFrame (browser only).
 
-import { createCamera, screenToGrid, panByScreen, ZOOM_MIN, ZOOM_MAX } from './camera.js';
-import { createEntity, setPath, step, tryStepDir, findPath, INPUT_DIRS, STEP_MS } from './movement.js';
+import { createCamera, screenToGrid, panByScreen, ZOOM_MIN, ZOOM_MAX, roomPixelSize, roomFits, fitZoom } from './camera.js';
+import { createEntity, setPath, step, tryStepDir, findPath, entityPos, INPUT_DIRS, STEP_MS } from './movement.js';
 import { createRenderer, loadAtlas } from './renderer.js';
 
-// opts: { tilemap, save?, width?, height? }
+// opts: { tilemap, save?, width?, height?, autoFrame? }
 // save = parsed save state ({ player: {i,j,z}, camera: {cx,cy,zoom} }) or null.
-export function createScene({ tilemap, save = null, width = 800, height = 600 }) {
+// autoFrame (HIRES_V2): when true, the camera self-manages framing every
+// update() — room-fit static camera on desktop, hero-follow zoom-1 camera
+// when the room doesn't fit the viewport (mobile/portrait). Default false
+// preserves the plain save/center camera (generic engine + tests).
+export function createScene({ tilemap, save = null, width = 800, height = 600, autoFrame = false }) {
   const camera = save
     ? createCamera(save.camera.cx, save.camera.cy, save.camera.zoom)
     : createCamera(tilemap.w / 2, tilemap.h / 2);
@@ -49,21 +53,42 @@ export function createScene({ tilemap, save = null, width = 800, height = 600 })
     camera.cy = n.cy;
   };
 
-  // Wheel / +/-: integer zoom, clamped 1..4.
+  // Wheel / +/-: integer zoom, clamped 1..3 (HIRES_V2).
   scene.handleZoom = (delta) => {
     camera.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, camera.zoom + Math.sign(delta || 1)));
   };
 
   // Advance the player by dt ms; 'blocked' decays to idle (transient);
   // pop queued directions when idle.
-  scene.update = (dt) => {
+  scene.update = (dt, vw, vh) => {
     step(player, dt, null, STEP_MS);
     if (player.state === 'blocked') player.state = 'idle';
     if (player.state === 'idle' && player.queue.length > 0) {
       const [di, dj] = player.queue.shift();
       tryStepDir(player, di, dj, tilemap);
     }
+    if (autoFrame) scene.syncCamera(vw ?? scene.width, vh ?? scene.height);
   };
+
+  // HIRES_V2 framing: if the room fits the viewport at zoom>=1, use a
+  // static camera centered on the room at the largest integer zoom that
+  // fits (desktop). Otherwise follow the hero at zoom 1 so the hero is
+  // always fully on screen, no fractional zoom (mobile/portrait).
+  scene.syncCamera = (vw, vh) => {
+    const room = roomPixelSize(tilemap.w, tilemap.h);
+    if (roomFits(room.w, room.h, vw, vh)) {
+      camera.zoom = fitZoom(room.w, room.h, vw, vh);
+      camera.cx = tilemap.w / 2;
+      camera.cy = tilemap.h / 2;
+    } else {
+      camera.zoom = ZOOM_MIN;
+      const pos = entityPos(player);
+      camera.cx = pos.fi;
+      camera.cy = pos.fj;
+    }
+  };
+
+  if (autoFrame) scene.syncCamera(width, height);
 
   return scene;
 }
@@ -87,11 +112,13 @@ export async function initBrowserScene(canvas) {
   const resize = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    if (scene) { scene.width = canvas.width; scene.height = canvas.height; scene.syncCamera(canvas.width, canvas.height); }
   };
+  let scene;
   resize();
   window.addEventListener('resize', resize);
 
-  const scene = createScene({ tilemap, save, width: canvas.width, height: canvas.height });
+  scene = createScene({ tilemap, save, width: canvas.width, height: canvas.height, autoFrame: true });
   scene.renderer = createRenderer(canvas, tilemap);
   try {
     scene.renderer.setAtlas(await loadAtlas('data/atlas.json'));
@@ -144,7 +171,7 @@ export async function initBrowserScene(canvas) {
   const frame = (now) => {
     const dt = Math.min(now - last, 100); // clamp long frames (tab switch)
     last = now;
-    scene.update(dt);
+    scene.update(dt, canvas.width, canvas.height);
     scene.renderer.draw({
       camera: scene.camera,
       entity: scene.player,

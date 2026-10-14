@@ -1,13 +1,15 @@
-// iso.js — 2.5D isometric coordinate system (2:1 diamond). LOCKED spec v1.
+// iso.js — 2.5D isometric coordinate system (2:1 diamond). HI-RES v2 (LOCKED).
 // Shared by renderer, camera, movement, tilemap, editor, and art footprints.
 // This is the single source of truth for grid<->screen math. Do NOT re-derive
 // the projection elsewhere — import from here.
 
-export const TILE_W = 32;   // screen width of one diamond tile (px)
-export const TILE_H = 16;   // screen height of one diamond tile (px)  -> 2:1
-export const ELEV_PX = 16;  // 1 elevation unit in screen px (= TILE_H)
-const HW = TILE_W / 2;      // 16
-const HH = TILE_H / 2;      // 8
+// HI-RES v2 (LOCKED by PO, Krit direction): every pixel dimension doubled
+// from v1 (32x16 -> 64x32). Projection/depth formulas unchanged.
+export const TILE_W = 64;   // screen width of one diamond tile (px)
+export const TILE_H = 32;   // screen height of one diamond tile (px)  -> 2:1
+export const ELEV_PX = 32;  // 1 elevation unit in screen px (= TILE_H)
+const HW = TILE_W / 2;      // 32
+const HH = TILE_H / 2;      // 16
 
 // grid (i, j, z) -> world pixel space. Origin (0,0) top vertex at (ox, oy).
 //   x = ox + (i - j) * (TILE_W/2)
