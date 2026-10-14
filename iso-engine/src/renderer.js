@@ -257,15 +257,32 @@ function drawEntity(ctx, d, cam, vw, vh, atlas) {
 }
 
 // Screen-space AABB a drawable occupies (used for occlusion testing only;
-// approximate but matches the boxes drawProp/drawEntity actually paint).
-function screenBox(d, cam, vw, vh) {
+// matches the boxes drawProp/drawEntity actually paint. When an atlas cell
+// is loaded for this drawable, read its real w/h — same source
+// drawProp()/drawEntity() use — instead of the placeholder box, since the
+// placeholder math is far smaller than the real atlas sprite footprint.
+function screenBox(d, cam, vw, vh, atlas = null) {
   const s = cam.zoom;
   if (d.kind === 'entity') {
     const A = toScreen({ x: d.x, y: d.y + TILE_H }, cam, vw, vh);
+    if (atlas && atlas.heroSheet != null) {
+      const sheet = atlas.sheets[atlas.heroSheet];
+      if (sheet) {
+        const w = sheet.cellW * s;
+        const h = sheet.cellH * s;
+        return { x0: A.x - w / 2, x1: A.x + w / 2, y0: A.y - h, y1: A.y };
+      }
+    }
     return { x0: A.x - 10 * s, x1: A.x + 10 * s, y0: A.y - 44 * s, y1: A.y };
   }
   // prop
   const A = anchorScreen(d.i, d.j, d.z, cam, vw, vh);
+  const found = atlasCell(atlas, 'sprites', d.asset);
+  if (found) {
+    const w = found.cell.w * s;
+    const h = found.cell.h * s;
+    return { x0: A.x - w / 2, x1: A.x + w / 2, y0: A.y - h, y1: A.y };
+  }
   if (d.asset.startsWith('spr_') && !d.asset.startsWith('spr_tree')) {
     const h = propHeightPx(d.asset) * s;
     const w = (32 + 32 * (Math.max(1, (d.footprint ?? [1]).length) - 1)) * s;
@@ -284,17 +301,20 @@ function boxesOverlap(a, b) {
 }
 
 // F-01 occlusion cue: true when any prop drawn after (on top of) the entity
-// this frame screen-overlaps it and is tall enough (propHeightPx > 0) to
-// visually cover it. Pure (Node-testable) — used by draw() and by tests.
-export function isEntityOccluded(drawables, cam, vw, vh) {
+// this frame screen-overlaps it and is tall enough (propHeightPx > 0, or has
+// a loaded atlas sprite cell) to visually cover it. Pure (Node-testable) —
+// used by draw() and by tests. `atlas` is optional so existing placeholder-art
+// callers/tests keep working unchanged.
+export function isEntityOccluded(drawables, cam, vw, vh, atlas = null) {
   const entity = drawables.find((d) => d.kind === 'entity');
   if (!entity) return false;
-  const ebox = screenBox(entity, cam, vw, vh);
+  const ebox = screenBox(entity, cam, vw, vh, atlas);
   for (const d of drawables) {
     if (d.kind !== 'prop') continue;
     if (d.depthKey <= entity.depthKey) continue; // drawn before the player, can't cover it
-    if (propHeightPx(d.asset) <= 0) continue;
-    if (boxesOverlap(ebox, screenBox(d, cam, vw, vh))) return true;
+    const hasAtlasCell = !!atlasCell(atlas, 'sprites', d.asset);
+    if (!hasAtlasCell && propHeightPx(d.asset) <= 0) continue;
+    if (boxesOverlap(ebox, screenBox(d, cam, vw, vh, atlas))) return true;
   }
   return false;
 }
@@ -326,7 +346,7 @@ export function draw(ctx, drawables, cam, vw, vh, atlas = null) {
     else if (d.kind === 'prop') drawProp(ctx, d, cam, vw, vh, atlas);
     else drawEntity(ctx, d, cam, vw, vh, atlas);
   }
-  if (isEntityOccluded(drawables, cam, vw, vh)) {
+  if (isEntityOccluded(drawables, cam, vw, vh, atlas)) {
     const entity = drawables.find((d) => d.kind === 'entity');
     drawOcclusionCue(ctx, entity, cam, vw, vh);
   }
@@ -338,6 +358,7 @@ export function createRenderer(canvas, tilemap) {
   let atlas = null;
   return {
     setAtlas(a) { atlas = a; },
+    getAtlas() { return atlas; }, // QA/test hook: current atlas (or null)
     draw(state) {
       const vw = state.width ?? canvas.width;
       const vh = state.height ?? canvas.height;

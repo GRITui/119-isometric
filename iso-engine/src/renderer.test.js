@@ -145,4 +145,53 @@ assert.strictEqual(isEntityOccluded(dClear, fixtureCam, 1000, 1000), false, 'F-0
   assert.strictEqual(saves, 0, 'F-01: clear frame does not run the cue draw pass');
 }
 
-console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue)');
+// --- F-01 regression (t_3eb7ff1b): atlas-loaded real art must still trigger
+// the occlusion cue. Reproduces the field bug: with the pre-art PLACEHOLDER
+// box math the hero/prop screen boxes were too small to overlap even when
+// visibly occluded; screenBox() must read the loaded atlas cell size instead.
+{
+  const fakeImg = { complete: true, naturalWidth: 128 };
+  const fakeAtlas = {
+    sheets: [{ file: 'hero.png', cellW: 128, cellH: 128, cols: 4 }],
+    images: [fakeImg],
+    heroSheet: 0,
+    tiles: {},
+    sprites: {
+      spr_shelf_0: { sheet: 0, x: 0, y: 0, w: 128, h: 128 },
+    },
+    animations: {},
+  };
+  // atlasCell() keys sprites/tiles lookups by `atlas.images[cell.sheet]`, so
+  // give the shelf its own sheet slot too (sheet index 1, same loaded image).
+  fakeAtlas.sprites.spr_shelf_0.sheet = 1;
+  fakeAtlas.images[1] = fakeImg;
+  fakeAtlas.sheets[1] = { file: 'props.png', cellW: 128, cellH: 128, cols: 1 };
+
+  const dOccAtlas = collectDrawables(fixtureTm, occludedPlayer, fixtureCam, 1000, 1000);
+  assert.strictEqual(
+    isEntityOccluded(dOccAtlas, fixtureCam, 1000, 1000, fakeAtlas),
+    true,
+    'F-01 regression: real-art (atlas) sized boxes still flag occlusion for the known-occluded fixture case',
+  );
+
+  // Without atlas awareness, a prop whose placeholder constant isn't in
+  // PROP_HEIGHT_PX (defaults to 32px) would previously never be flagged even
+  // though its real atlas sprite (128px) clearly overlaps — this is the
+  // exact dead-cue bug. Confirm the atlas-aware path catches it.
+  const smallPlaceholderAtlas = {
+    sheets: [{ file: 'hero.png', cellW: 128, cellH: 128, cols: 4 }, { file: 'props.png', cellW: 128, cellH: 128, cols: 1 }],
+    images: [fakeImg, fakeImg],
+    heroSheet: 0,
+    tiles: {},
+    sprites: { spr_fridge_0: { sheet: 1, x: 0, y: 0, w: 128, h: 128 } },
+    animations: {},
+  };
+  const dOccAtlas2 = collectDrawables(fixtureTm, occludedPlayer, fixtureCam, 1000, 1000);
+  assert.strictEqual(
+    isEntityOccluded(dOccAtlas2, fixtureCam, 1000, 1000, smallPlaceholderAtlas),
+    true,
+    'F-01 regression: atlas-sized prop box (128px) still occludes using real cell dims',
+  );
+}
+
+console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue, F-01 atlas regression)');
