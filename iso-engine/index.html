@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iso 2.5D — playable scene</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #14151a; overflow: hidden; }
+    #game { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+    #hint {
+      position: fixed; bottom: 8px; left: 8px; color: #777;
+      font: 12px/1.4 ui-monospace, monospace; pointer-events: none; user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="hint">WASD / arrows: move &middot; click: walk &middot; right/middle drag: pan &middot; wheel or +/-: zoom</div>
+  <script type="module">
+    import { initBrowserScene } from './src/scene.js';
+    initBrowserScene(document.getElementById('game')).catch((err) => {
+      document.getElementById('hint').textContent = 'scene failed to load: ' + err.message;
+    });
+  </script>
+</body>
+</html>
