@@ -1,12 +1,12 @@
 // camera.js — isometric camera: grid-space focus (cx, cy) + integer zoom.
-// GRID_SPEC v1: screen = (worldPx(p) - worldPx(cam)) * zoom + viewportCenter.
+// GRID_SPEC v2: screen = (worldPx(p) - worldPx(cam)) * zoom + viewportCenter.
 // All projection math comes from iso.js — never re-derived here.
 // Pure functions, Node + browser compatible.
 
-import { gridToWorld, worldToGrid } from './iso.js';
+import { gridToWorld, worldToGrid, TILE_W, TILE_H, ELEV_PX } from './iso.js';
 
 export const ZOOM_MIN = 1;
-export const ZOOM_MAX = 4;
+export const ZOOM_MAX = 3; // HIRES_V2: int zoom 1..3
 export const ZOOM_DEFAULT = 2;
 
 // Integer zoom, clamped to [ZOOM_MIN, ZOOM_MAX].
@@ -55,12 +55,36 @@ export function screenToGrid(x, y, cam, viewportW, viewportH) {
 
 // Drag by (dx, dy) screen px -> new camera focus.
 // Invariant: every world point moves exactly (dx, dy) on screen.
-//   Δcx = -dx/(32·zoom) - dy/(16·zoom)
-//   Δcy =  dx/(32·zoom) - dy/(16·zoom)
+//   Δcx = -dx/(TILE_W·zoom) - dy/(TILE_H·zoom)
+//   Δcy =  dx/(TILE_W·zoom) - dy/(TILE_H·zoom)
 // Result is clamped to the map (0..w, 0..h).
 export function panByScreen(dx, dy, cam, zoom, w, h) {
   const z = zoom ?? cam.zoom;
-  const cx = cam.cx - dx / (32 * z) - dy / (16 * z);
-  const cy = cam.cy + dx / (32 * z) - dy / (16 * z);
+  const cx = cam.cx - dx / (TILE_W * z) - dy / (TILE_H * z);
+  const cy = cam.cy + dx / (TILE_W * z) - dy / (TILE_H * z);
   return clampFocus({ ...cam, cx, cy }, w, h);
+}
+
+// --- mobile/room framing helpers (HIRES_V2) --------------------------------
+
+// Pixel size of a w x h room incl. back walls (wallUnits elevation units tall).
+export function roomPixelSize(w, h, wallUnits = 2) {
+  return {
+    w: (w + h) * (TILE_W / 2),
+    h: (w + h) * (TILE_H / 2) + wallUnits * ELEV_PX,
+  };
+}
+
+// Does the room (roomW x roomH, zoom 1) fit inside the viewport?
+export function roomFits(roomW, roomH, viewportW, viewportH) {
+  return roomW <= viewportW && roomH <= viewportH;
+}
+
+// Largest integer zoom in [ZOOM_MIN, ZOOM_MAX] at which the room still fits
+// the viewport. Falls back to ZOOM_MIN if nothing fits.
+export function fitZoom(roomW, roomH, viewportW, viewportH) {
+  for (let z = ZOOM_MAX; z >= ZOOM_MIN; z--) {
+    if (roomW * z <= viewportW && roomH * z <= viewportH) return z;
+  }
+  return ZOOM_MIN;
 }

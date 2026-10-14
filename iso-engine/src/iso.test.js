@@ -4,17 +4,17 @@ import {
 } from './iso.js';
 import assert from 'node:assert';
 
-// --- 2:1 ratio + locked constants ---
-assert.strictEqual(TILE_W, 32);
-assert.strictEqual(TILE_H, 16);
+// --- 2:1 ratio + locked constants (HIRES_V2) ---
+assert.strictEqual(TILE_W, 64);
+assert.strictEqual(TILE_H, 32);
 assert.strictEqual(TILE_W / TILE_H, 2);
-assert.strictEqual(ELEV_PX, 16);
+assert.strictEqual(ELEV_PX, 32);
 
 // --- grid->screen matches the locked art spec exactly ---
-// sx = ox + (i-j)*16 ; sy = oy + (i+j)*8 - z*16
+// sx = ox + (i-j)*32 ; sy = oy + (i+j)*16 - z*32
 let p = gridToWorld(5, 2, 1, 100, 50);
-assert.strictEqual(p.x, 100 + (5 - 2) * 16);      // 148
-assert.strictEqual(p.y, 50 + (5 + 2) * 8 - 1 * 16); // 90
+assert.strictEqual(p.x, 100 + (5 - 2) * 32);      // 196
+assert.strictEqual(p.y, 50 + (5 + 2) * 16 - 1 * 32); // 130
 
 // --- round-trip grid<->screen (z=0), all tiles in a 16x16 map ---
 for (let i = 0; i < 16; i++) {
@@ -26,15 +26,15 @@ for (let i = 0; i < 16; i++) {
   }
 }
 
-// --- anchor = tile bottom (front) vertex (sx, sy+16) ---
+// --- anchor = tile bottom (front) vertex (sx, sy+32) ---
 const a = tileAnchor(2, 2);
-assert.strictEqual(a.x, (2 - 2) * 16);       // 0
-assert.strictEqual(a.y, (2 + 2) * 8 + 16);   // 48
+assert.strictEqual(a.x, (2 - 2) * 32);       // 0
+assert.strictEqual(a.y, (2 + 2) * 16 + 32);  // 96
 
 // --- tile corners form a 2:1 diamond ---
 const c = tileCorners(0, 0);
-assert.strictEqual(c.right.x - c.left.x, TILE_W);   // width 32
-assert.strictEqual(c.bottom.y - c.top.y, TILE_H);   // height 16
+assert.strictEqual(c.right.x - c.left.x, TILE_W);   // width 64
+assert.strictEqual(c.bottom.y - c.top.y, TILE_H);   // height 32
 
 // --- depth ordering (painter's algorithm) ---
 assert.ok(depthKey(2, 2) < depthKey(3, 3), "front row draws later");
