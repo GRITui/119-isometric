@@ -4,7 +4,7 @@
   "description": "2.5D isometric pixel engine (2:1 diamond, z-ordered depth)",
   "type": "module",
   "scripts": {
-    "test": "node src/iso.test.js",
+    "test": "node --test src tools",
     "serve": "node tools/serve.js"
   }
 }
