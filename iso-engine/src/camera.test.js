@@ -1,8 +1,8 @@
 import {
   createCamera, clampZoom, clampFocus, worldToScreen, screenToGrid, panByScreen,
-  ZOOM_MIN, ZOOM_MAX,
+  ZOOM_MIN, ZOOM_MAX, roomPixelSize, roomFits, fitZoom,
 } from './camera.js';
-import { gridToWorld } from './iso.js';
+import { gridToWorld, TILE_W, ELEV_PX } from './iso.js';
 import assert from 'node:assert';
 
 const VW = 800;
@@ -17,15 +17,15 @@ const c = worldToScreen({ i: 8, j: 8, z: 0 }, cam, VW, VH);
 assert.strictEqual(c.x, VW / 2);
 assert.strictEqual(c.y, VH / 2);
 
-// --- zoom clamped to 1..4 ---
+// --- zoom clamped to 1..3 (HIRES_V2) ---
 assert.strictEqual(clampZoom(0.4), 1);
-assert.strictEqual(clampZoom(9), 4);
+assert.strictEqual(clampZoom(9), 3);
 assert.strictEqual(clampZoom(2.6), 3); // integer zoom
 assert.strictEqual(createCamera(0, 0, 99).zoom, ZOOM_MAX);
 assert.strictEqual(createCamera(0, 0, 0.1).zoom, ZOOM_MIN);
 
-// --- round-trip screen<->grid at zoom 1 and 2 (z=0) ---
-for (const zoom of [1, 2, 4]) {
+// --- round-trip screen<->grid at zoom 1, 2, 3 (z=0) ---
+for (const zoom of [1, 2, 3]) {
   const camZ = createCamera(8, 8, zoom);
   for (const [i, j] of [[0, 0], [3.5, 7.25], [15, 15], [7.5, 2.5]]) {
     const s = worldToScreen({ i, j, z: 0 }, camZ, VW, VH);
@@ -38,7 +38,7 @@ for (const zoom of [1, 2, 4]) {
 // --- elevation: a z=1 point sits ELEV_PX*zoom px above its z=0 ground point ---
 const g0 = worldToScreen({ i: 2, j: 2, z: 0 }, cam, VW, VH);
 const g1 = worldToScreen({ i: 2, j: 2, z: 1 }, cam, VW, VH);
-assert.strictEqual(g1.y, g0.y - 16 * 2); // ELEV_PX * zoom
+assert.strictEqual(g1.y, g0.y - ELEV_PX * 2); // ELEV_PX * zoom
 assert.strictEqual(g1.x, g0.x);
 
 // --- pan invariant: dragging by (dx, dy) moves every world point by (dx, dy) ---
@@ -78,6 +78,17 @@ const down = panByScreen(0, 100, cam, cam.zoom, MAP_W, MAP_H);
 assert.ok(down.cx < cam.cx && down.cy < cam.cy);
 
 // gridToWorld still agrees with the camera world-space (no drift)
-assert.strictEqual(gridToWorld(8, 8, 0).x, (8 - 8) * 16);
+assert.strictEqual(gridToWorld(8, 8, 0).x, (8 - 8) * (TILE_W / 2));
 
-console.log('camera.js: all tests passed (transform, round-trip, pan invariant, clamp, zoom)');
+// --- room framing helpers (HIRES_V2: mobile follow / desktop fit) ---
+// 10x8 room incl. 2u back walls = 576x352 (spec HIRES_V2.md worked example)
+{
+  const room = roomPixelSize(10, 8);
+  assert.strictEqual(room.w, 576);
+  assert.strictEqual(room.h, 352);
+  assert.ok(roomFits(room.w, room.h, 1280, 720), 'room fits 1280x720');
+  assert.strictEqual(fitZoom(room.w, room.h, 1280, 720), 2, '1280x720 fits at zoom 2 (1152x704)');
+  assert.ok(!roomFits(room.w, room.h, 390, 844), 'room does not fit 390x844 at zoom 1');
+}
+
+console.log('camera.js: all tests passed (transform, round-trip, pan invariant, clamp, zoom, framing)');
