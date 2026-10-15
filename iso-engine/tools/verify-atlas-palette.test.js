@@ -7,6 +7,7 @@ import {
   categoryForSheet,
   limitForSheet,
   countDistinctColors,
+  maxDistinctColorsPerCell,
   verifySheetBuffer,
   verifyAtlas,
 } from './verify-atlas-palette.js';
@@ -92,4 +93,46 @@ test('verifyAtlas: reads real data/atlas.json sheets from disk and passes', asyn
   const { results, ok } = verifyAtlas(manifest, root);
   assert.strictEqual(results.length, manifest.sheets.length);
   assert.ok(ok, `current committed art stays on-palette: ${JSON.stringify(results)}`);
+});
+
+test('maxDistinctColorsPerCell: per-frame budget, not whole-sheet', () => {
+  // 2x1 cells of 4x4px; cell 0 has 3 colours, cell 1 has 5 colours.
+  // Whole-sheet count would be 8 (union); per-cell max must be 5.
+  const w = 8, h = 4;
+  const png = new PNG({ width: w, height: h });
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const inCell0 = x < 4;
+      const idx = (y * 4 + (x % 4)) % (inCell0 ? 3 : 5);
+      const c = inCell0 ? idx : 10 + idx; // disjoint colour ranges per cell
+      png.data[i] = c; png.data[i + 1] = c; png.data[i + 2] = c; png.data[i + 3] = 255;
+    }
+  }
+  const whole = countDistinctColors(png);
+  const perCell = maxDistinctColorsPerCell(png, 4, 4, 2);
+  assert.strictEqual(perCell, 5);
+  assert.ok(whole > perCell, 'whole-sheet union exceeds the true per-frame max');
+});
+
+test('verifySheetBuffer: hero sheet uses per-cell budget when sheet dims given', () => {
+  // Build a 2-cell-wide hero sheet where the union of both cells is 60
+  // colours (would fail a whole-sheet 48 check) but each cell alone is 30.
+  const w = 8, h = 4;
+  const png = new PNG({ width: w, height: h });
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const inCell0 = x < 4;
+      const local = (y * 4 + (x % 4)) % 16; // 16 distinct values per cell, disjoint ranges
+      const c = inCell0 ? local : 100 + local;
+      png.data[i] = c; png.data[i + 1] = c; png.data[i + 2] = c; png.data[i + 3] = 255;
+    }
+  }
+  const buf = PNG.sync.write(png);
+  const whole = verifySheetBuffer('assets/hero.png', buf).count; // no sheet dims -> whole-sheet
+  assert.ok(whole > 16, 'whole-sheet union of the two cells is larger than either cell');
+  const perCell = verifySheetBuffer('assets/hero.png', buf, { cellW: 4, cellH: 4, cols: 2 });
+  assert.strictEqual(perCell.count, 16);
+  assert.strictEqual(perCell.ok, true);
 });
