@@ -12,6 +12,13 @@
 import { gridToWorld, tileCorners, depthKey, TILE_H } from './iso.js';
 import { worldToScreen } from './camera.js';
 import { entityPos } from './movement.js';
+import { labelBox, HERO_H_MAX } from './label.js';
+
+// Palette (shared 16-color UI palette, hud_spec.md t_26276a38) — label only.
+const LABEL_INK = '#101418';
+const LABEL_GROUND3 = '#a3b1bd';
+const LABEL_ACCENT_A = '#e0b34d'; // hp >= 30%
+const LABEL_ACCENT_B = '#c25b4e'; // hp < 30% (low-health cue)
 
 const TYPE_ORDER = { tile: 0, prop: 1, entity: 2 };
 
@@ -80,6 +87,7 @@ export function collectDrawables(tilemap, entity, camera, viewportW, viewportH) 
       kind: 'entity', i: entity.i, j: entity.j, x: pos.x, y: pos.y, z: entity.z,
       facing: entity.facing ?? 's', state: entity.state, action: entity.action ?? null,
       progress: entity.progress ?? 0,
+      name: entity.name ?? 'Hero', hp: entity.hp ?? 1,
       depthKey: depthKey(entity.i, entity.j, entity.z),
     });
   }
@@ -337,6 +345,41 @@ function drawOcclusionCue(ctx, entity, cam, vw, vh) {
   ctx.restore();
 }
 
+// World-anchored name/HP label (hud_spec.md + label_spec_v2.md). Uses
+// label.js's zone-aware safe-area clamp so it never overlaps the safe-area
+// edge or a fixed HUD zone, at any zoom/viewport. Sprite height is taken as
+// HERO_H_MAX (96px world, scaled by zoom) — a conservative upper bound from
+// HIRES_V2.md's 80-96px hero range, which keeps the label clear of the
+// sprite regardless of the sprite's real per-frame cropped height.
+// No ctx.save()/restore() here: draw()'s F-01 occlusion-cue test counts
+// ctx.save() calls to detect the cue pass, so the label (drawn unconditionally
+// whenever the entity isn't occluded) must not emit one — it resets the
+// globalAlpha it touches instead.
+function drawLabel(ctx, entity, cam, vw, vh) {
+  const A = toScreen({ x: entity.x, y: entity.y + TILE_H }, cam, vw, vh); // feet
+  const box = labelBox(A.x, A.y, HERO_H_MAX * cam.zoom, vw, vh);
+  const hp = Math.max(0, Math.min(1, entity.hp ?? 1));
+  const barFill = hp >= 0.3 ? LABEL_ACCENT_A : LABEL_ACCENT_B;
+  ctx.fillStyle = LABEL_INK;
+  ctx.globalAlpha = 0.9;
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = LABEL_GROUND3;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+  ctx.fillStyle = LABEL_GROUND3;
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(entity.name ?? 'Hero', box.x + box.w / 2, box.y + 14);
+  const barX = box.x + box.w / 2 - 16;
+  const barY = box.y + 20;
+  ctx.strokeStyle = LABEL_INK;
+  ctx.strokeRect(barX, barY, 32, 4);
+  ctx.fillStyle = barFill;
+  ctx.fillRect(barX + 1, barY + 1, Math.max(0, Math.round(30 * hp)), 2);
+}
+
 // Draw a sorted drawable list onto a 2D context.
 export function draw(ctx, drawables, cam, vw, vh, atlas = null) {
   ctx.imageSmoothingEnabled = false;
@@ -346,10 +389,12 @@ export function draw(ctx, drawables, cam, vw, vh, atlas = null) {
     else if (d.kind === 'prop') drawProp(ctx, d, cam, vw, vh, atlas);
     else drawEntity(ctx, d, cam, vw, vh, atlas);
   }
-  if (isEntityOccluded(drawables, cam, vw, vh, atlas)) {
-    const entity = drawables.find((d) => d.kind === 'entity');
-    drawOcclusionCue(ctx, entity, cam, vw, vh);
-  }
+  const occluded = isEntityOccluded(drawables, cam, vw, vh, atlas);
+  const entity = drawables.find((d) => d.kind === 'entity');
+  if (occluded) drawOcclusionCue(ctx, entity, cam, vw, vh);
+  // hud_spec.md clamping rule #3: hide the label when the entity is
+  // occluded by a taller depth key (z-order aware).
+  if (entity && !occluded) drawLabel(ctx, entity, cam, vw, vh);
 }
 
 // Browser: wrap a canvas. renderer.draw({ camera, entity, width, height }).
