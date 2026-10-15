@@ -1,0 +1,1001 @@
+[
+  {
+    "id": "palette-ramp-hueshift",
+    "category": "palette",
+    "title": "Hue-shift ramps instead of straight value ramps",
+    "claim": "Shadows should shift cooler/blue-purple and lights warmer/yellow across a colour ramp, not just change brightness; saturation should peak mid-ramp and drop at both ends.",
+    "project_relevance": "Directly governs how we build our 16-colour env ramps and 48-colour hero ramp so materials don't look flat or clash scene-to-scene.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixelblog - 1 - Color Palettes",
+        "author": "Raymond Schlitter (Slynyrd)",
+        "url": "http://slynyrd.com/blog/2018/1/10/pixelblog-1-color-palettes",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "palette-pick-dont-block",
+    "category": "palette",
+    "title": "Pick an existing palette, swap later",
+    "claim": "Palette choice shouldn't block starting work; pick a known 16/32-colour palette and swap it later since palette-swapping finished pixel art is cheap.",
+    "project_relevance": "Lets background/sprite artists start Scene 01 assets now against a placeholder env palette without waiting on final colour lock.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "palette-fixed-brand-constraint",
+    "category": "palette",
+    "title": "Carry a restraint/simplicity aesthetic across projects, not a literal locked palette",
+    "claim": "A studio can carry a deliberate visual-restraint/simplicity philosophy from a 2D game into a later 3D project rather than re-deriving the look from scratch; this is a studio-level aesthetic choice, not a documented literal locked palette reused as a brand asset.",
+    "project_relevance": "Supports treating our 16-colour env / 48-colour hero budget as a house aesthetic to carry forward, but we should state our own hard lock as our decision, not cite this article as proof of one.",
+    "examples": [
+      {
+        "game": "Hyper Light Drifter",
+        "what_to_look_at": "Restraint/simplicity philosophy carried from HLD's 2D look into the studio's later 3D project (Hyper Light Breaker)"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Embracing restraint to build a visual bridge from Hyper Light Breaker to its predecessor",
+        "author": "Gamedeveloper",
+        "url": "https://gamedeveloper.com/art/tossing-out-textures-to-build-a-visual-bridge-from-hyper-light-breaker-to-its-predecessor",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "low"
+  },
+  {
+    "id": "line-full-outline-first",
+    "category": "line",
+    "title": "Full dark outline to lock silhouette, then selective outline",
+    "claim": "Start with a full dark/black outline to lock the silhouette, then replace outline pixels with lighter/body-matched colours on the lit side, keeping dark line only against background and for internal segmentation.",
+    "project_relevance": "Our hero outline strategy for the 48-colour hero palette; informs whether to add a selout pass on top of PixelLab's flat outline output.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "outline"
+    ],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "line-pixellab-outline-param-is-flat",
+    "category": "line",
+    "title": "PixelLab's outline param only exposed a flat full-outline mode in our tests",
+    "claim": "Our hero v3 PixelLab calls used outline=\"single color black outline\" on create-character-v3; no selective-outline value was exercised or found documented for this endpoint in the logs we inspected.",
+    "project_relevance": "If selective outlining is wanted, we likely need a post-process pass over PixelLab output rather than relying on an API parameter.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API docs",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/docs",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "outline"
+    ],
+    "recommendation": "adapt",
+    "confidence": "high"
+  },
+  {
+    "id": "shading-single-consistent-light",
+    "category": "light/shading",
+    "title": "One consistent light source, think in volumes",
+    "claim": "Pick one light source (commonly front/above-left) and hold it constant across the whole sprite set; think in volumes/forms, not flat line-fills; squint-test for a few large light/dark clusters.",
+    "project_relevance": "This is the core rule for our NW-lighting convention across floors, walls, props and hero.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "shading"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "shading-eastward-bumpmap",
+    "category": "light/shading",
+    "title": "Hybrid 2D/3D bump-map lighting on layered sprites",
+    "claim": "Sprites split into parts, rebuilt in a 3D scene, hand-painted per-piece into a bump map so each part receives correct in-engine lighting — a hybrid 2D/3D pipeline rather than flat hand shading.",
+    "project_relevance": "Out of scope for our budget/tooling (no 3D bump-map pipeline), but confirms flat hand-shading is a legitimate simpler alternative used by AA-scale studios too.",
+    "examples": [
+      {
+        "game": "Eastward",
+        "what_to_look_at": "Consistent directional shading on buildings/props across changing dawn/dusk lighting"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Eastward's creators share insights on making pixel art adventures",
+        "author": "Gamedeveloper",
+        "url": "https://www.gamedeveloper.com/art/eastward-s-creators-share-insights-on-making-pixel-art-adventures",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "shading"
+    ],
+    "recommendation": "drop",
+    "confidence": "med"
+  },
+  {
+    "id": "shading-shorthike-flat-ramp",
+    "category": "light/shading",
+    "title": "Stair-stepped flat lighting ramp over a low-res render",
+    "claim": "A Short Hike renders a full 3D world to a tiny offscreen texture and applies a custom unlit shader with a stair-stepped lighting ramp, deliberately flattening shading bands to stay crisp.",
+    "project_relevance": "Not our pipeline (we're hand/AI-authored sprites, not a 3D-to-pixel render), but validates flattened/banded shading as an intentional readability choice at small scale.",
+    "examples": [
+      {
+        "game": "A Short Hike",
+        "what_to_look_at": "Stair-stepped shading bands on terrain and characters instead of smooth gradients"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Crafting a tiny open world",
+        "author": "PlayStation Blog",
+        "url": "https://blog.playstation.com/2021/08/05/crafting-a-tiny-open-world-a-look-behind-the-scenes-at-the-creation-of-a-short-hike",
+        "accessed": "2026-10-14"
+      },
+      {
+        "title": "GDC postmortem talk",
+        "author": "A Short Hike team (YouTube)",
+        "url": "https://youtube.com/watch?v=ZW8gWgpptI8",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "shading"
+    ],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "shading-octopath-balance",
+    "category": "light/shading",
+    "title": "Over-lighting 2D sprites breaks the pixel-art read",
+    "claim": "Octopath's team found flat 2D lighting insufficient on its own, added true 3D depth/DOF, but had to re-balance resolution/saturation because over-resolved/over-lit sprites lose their pixel-art appeal.",
+    "project_relevance": "Caution against layering heavy dynamic lighting/post-fx onto our flat hero/env sprites; keep lighting simple and intentional.",
+    "examples": [
+      {
+        "game": "Octopath Traveler",
+        "what_to_look_at": "HD-2D sprites against a lit 3D diorama with shallow DOF"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Octopath Traveler devs on character origins, visual style, initial HD Rumble plans, much more",
+        "author": "Nintendo Everything",
+        "url": "https://nintendoeverything.com/octopath-traveler-devs-on-character-origins-visual-style-initial-hd-rumble-plans-much-more/",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "shading"
+    ],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "aa-step-length-rule",
+    "category": "aa/dither",
+    "title": "Only AA steps 2+ pixels long; never AA a 45° step",
+    "claim": "Apply anti-aliasing only to staircase steps 2+ pixels long; never AA a 1x1/45-degree step or already-straight lines — that's the main cause of over-AA blur. AA run length should scale with step length.",
+    "project_relevance": "Concrete rule for our pixel-art pass / any manual cleanup of PixelLab output edges.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "5 - Anti-Alias and Banding",
+        "author": "Pedro Medeiros (Saint11)",
+        "url": "https://saint11.art/pixel_art_articles/article5/",
+        "accessed": "2026-10-14"
+      },
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "aa-inner-edge-only",
+    "category": "aa/dither",
+    "title": "Never AA the outer edge against an unknown background",
+    "claim": "Don't anti-alias the outer edge of a sprite meant to sit on an unknown game background colour — AA tuned for one background colour looks wrong on another; AA inner edges only.",
+    "project_relevance": "Directly applicable: our hero sprites are no_background PNGs composited over varying floor/wall tiles.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "detail"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "dither-large-flat-areas",
+    "category": "aa/dither",
+    "title": "Dither large flat areas or rough textures, not everything",
+    "claim": "Dithering fakes an intermediate shade with a noise pattern instead of a new palette colour; works best on large single-colour areas or rough/bumpy texture; some artists skip it entirely.",
+    "project_relevance": "Optional technique for our wall/floor fills if flat colour reads too plain within the 16-colour env budget.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "readability-band-compression",
+    "category": "readability",
+    "title": "Fix banding via band compression or gradient-direction match",
+    "claim": "Visible flat colour bands read as flat/blurry; fix via band compression (squeeze bands into a tiny area) or by rotating gradient/AA direction to match the surface slope.",
+    "project_relevance": "QA checklist item for our floor/wall shading passes.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "5 - Anti-Alias and Banding",
+        "author": "Pedro Medeiros (Saint11)",
+        "url": "https://saint11.art/pixel_art_articles/article5/",
+        "accessed": "2026-10-14"
+      },
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "readability-shorthike-edgefog",
+    "category": "readability",
+    "title": "Edge-detect outline + distance fog compensates for low-res noise",
+    "claim": "A Short Hike pairs a soft edge-detection outline pass with distance fog specifically to counter low-pixel-count noise at a distance.",
+    "project_relevance": "A cheap readability fix if our Scene 01 interior ever needs far-background props at reduced detail.",
+    "examples": [
+      {
+        "game": "A Short Hike",
+        "what_to_look_at": "Soft outline on distant terrain fading into fog"
+      }
+    ],
+    "sources": [
+      {
+        "title": "GDC postmortem talk",
+        "author": "A Short Hike team (YouTube)",
+        "url": "https://youtube.com/watch?v=ZW8gWgpptI8",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "scale-start-large-then-shrink",
+    "category": "scale/resolution",
+    "title": "Prototype shading/AA techniques large, then scale down",
+    "claim": "Tutorials often demonstrate shading/AA/selout techniques on a larger canvas (e.g. 96x96) first because it's easier to see, then apply the same technique at the real small scale.",
+    "project_relevance": "Workflow tip for sprite artists iterating on 128px-cell / 80-96px hero art before committing to final resolution.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Tutorial: Basics",
+        "author": "Derek Yu (Spelunky)",
+        "url": "https://www.derekyu.com/makegames/pixelart.html",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "image_size"
+    ],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "scale-detail-density-series",
+    "category": "scale/resolution",
+    "title": "Detail density must match canvas size",
+    "claim": "Saint11 maintains dedicated 'Scaling Pixel Art' / 'Big Pixel Art' series specifically on detail-density tradeoffs at different canvas sizes.",
+    "project_relevance": "Supports a fixed detail budget per asset tier (hero vs. prop vs. tile) rather than one density rule for everything.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Saint11 Blog (Scaling Pixel Art, Consistency, Big Pixel Art, Glossary)",
+        "author": "Pedro Medeiros (Saint11)",
+        "url": "https://saint11.art/blog",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "detail"
+    ],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "scale-unpacking-anchor-object",
+    "category": "scale/resolution",
+    "title": "Fix one small anchor prop's scale first, derive everything else from it",
+    "claim": "Unpacking fixed the smallest drawable unit (a mug) first; all other props including tiny items scale/abstract relative to it rather than by true relative size.",
+    "project_relevance": "Directly actionable: pick one small Scene 01 prop (e.g. a mug/book) as our scale anchor before drawing the rest of the prop set.",
+    "examples": [
+      {
+        "game": "Unpacking",
+        "what_to_look_at": "Consistent prop scale across tiny and large furniture items despite abstraction"
+      }
+    ],
+    "sources": [
+      {
+        "title": "How Unpacking's art combines beauty with clarity",
+        "author": "Eurogamer",
+        "url": "https://www.eurogamer.net/how-unpackings-art-combines-beauty-with-clarity",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "image_size"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "iso-2to1-angle",
+    "category": "iso/tiles",
+    "title": "2:1 pixel iso angle, not true 30° CAD isometric",
+    "claim": "Pixel-art isometric uses a 2-pixel-across/1-pixel-down ratio (~26.565°); true 30° isometric looks jaggy at pixel scale. Tile-size guidance given: 32x16, 64x32, 128x64.",
+    "project_relevance": "Confirms our 64x32 tile spec matches established pixel-iso convention exactly.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "Pixel Art Isometric #1",
+        "author": "CLIP STUDIO TIPS",
+        "url": "https://tips.clip-studio.com/en-us/articles/4969",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "iso-wall-convention-choice",
+    "category": "iso/tiles",
+    "title": "Overlapping wall vs one-wall-per-tile convention",
+    "claim": "Two established iso-wall conventions: walls drawn slightly outside the tile boundary (needs 4 directional variants) vs. one wall occupying its own full tile (needs only 1 asset).",
+    "project_relevance": "Direct input to our Scene 01 wall-tile asset count/budget decision.",
+    "examples": [
+      {
+        "game": "The Sims",
+        "what_to_look_at": "Overlapping wall style requiring directional variants"
+      }
+    ],
+    "sources": [
+      {
+        "title": "What's the best way to implement and design walls in an isometric tile game",
+        "author": "StackOverflow",
+        "url": "https://stackoverflow.com/questions/11482316/whats-the-best-way-to-implement-and-design-walls-in-an-isometric-tile-game",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "iso-sims-pitfalls",
+    "category": "iso/tiles",
+    "title": "Documented iso-room pitfalls: ambient wall banding, floating objects, wall clipping",
+    "claim": "The Sims' own design documentation lists concrete defects to avoid: ambient-only wall lighting bands at low light, objects without shadows appear to float, and multi-tile objects poke through walls.",
+    "project_relevance": "Direct QA checklist for our wall/floor/prop art pass on Scene 01.",
+    "examples": [
+      {
+        "game": "The Sims",
+        "what_to_look_at": "Wall shading at low ambient light, object shadow treatment"
+      }
+    ],
+    "sources": [
+      {
+        "title": "The Sims design document PDF",
+        "author": "donhopkins.com",
+        "url": "https://donhopkins.com/home/TheSimsDesignDocuments/TheStateOfTheArtAndGoingForwardToE3.pdf",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "iso-fft-landmark-alignment",
+    "category": "iso/tiles",
+    "title": "Align body landmarks to the floor-plane diagonal",
+    "claim": "All body landmarks (shoulders, hips, eyes, feet) sit on the same diagonal as the floor plane's iso angle so the character reads as standing on the grid; front/back pose covers all 4 cardinals via mirroring.",
+    "project_relevance": "Directly applicable to our hero sprite's feet-anchor (64,127) and directional pose set.",
+    "examples": [
+      {
+        "game": "Final Fantasy Tactics",
+        "what_to_look_at": "Chibi sprite landmark alignment to the iso floor diagonal"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Isometric Character Basics",
+        "author": "Pixel Art Class (YouTube)",
+        "url": "https://youtube.com/watch?v=45gueF62t1Q",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "view",
+      "n_directions"
+    ],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "iso-billboard-quads",
+    "category": "iso/tiles",
+    "title": "Flat-textured ground + perpendicular billboard quads for depth",
+    "claim": "Flat-textured ground tiles with perpendicular 2D quads for grass/props deliver iso depth cues without true 3D geometry.",
+    "project_relevance": "A cheap way to add vertical prop detail (rugs, plants) on our flat floor tiles without a 3D pipeline.",
+    "examples": [
+      {
+        "game": "Final Fantasy Tactics",
+        "what_to_look_at": "Grass billboards standing on flat ground tiles"
+      }
+    ],
+    "sources": [
+      {
+        "title": "How is 3D texture on a ground tile in an isometric grid system",
+        "author": "gamedev.stackexchange",
+        "url": "https://gamedev.stackexchange.com/questions/28305/how-is-3d-texture-on-a-ground-tile-in-an-isometric-grid-system",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "iso-habbo-modular-furni",
+    "category": "iso/tiles",
+    "title": "Shared modular furniture catalog on a fixed iso grid",
+    "claim": "Habbo Hotel's rooms are built entirely from a shared library of interchangeable iso-aligned furniture pieces placed on a fixed grid.",
+    "project_relevance": "Direct model for our prop system: a reusable iso-aligned prop catalog rather than one-off hand-placed art per room.",
+    "examples": [
+      {
+        "game": "Habbo Hotel",
+        "what_to_look_at": "Furniture catalog data model: tileSizeX/Y/Z grid dimensions, category, and catalog-vs-inventory placement source shared across all room furni"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Furniture Architecture (habbo-cc/Habbo-Sky reverse-engineering wiki)",
+        "author": "habbo-cc",
+        "url": "https://github-wiki-see.page/m/habbo-cc/Habbo-Sky/wiki/Furniture-Architecture",
+        "accessed": "2026-10-15"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "iso-habbo-stable-rooms",
+    "category": "iso/tiles",
+    "title": "Keep iconic room layouts stable over time",
+    "claim": "Long-lived public rooms (e.g. the Library) kept their furni layout/identity consistent across years, including a known quirk left in deliberately.",
+    "project_relevance": "Supports locking Scene 01's apartment layout once set rather than redesigning it on every art pass.",
+    "examples": [
+      {
+        "game": "Habbo Hotel",
+        "what_to_look_at": "The Habbo Library's unchanged layout across years"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Habbo Library",
+        "author": "HabboHistory",
+        "url": "https://habbohistory.com/habbo-library",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "anim-owlboy-periodic-redraw",
+    "category": "animation",
+    "title": "Periodic style redraws keep long productions from looking dated",
+    "claim": "D-Pad Studio redesigned and redrew Owlboy's art assets multiple times over a 10-year production specifically so the final game wouldn't look '10 years out of date'.",
+    "project_relevance": "Budget expectation: our hero/env art may need at least one deliberate style pass later in production, not just an initial style guide.",
+    "examples": [
+      {
+        "game": "Owlboy",
+        "what_to_look_at": "Visual consistency across a decade of iterative redraws"
+      }
+    ],
+    "sources": [
+      {
+        "title": "'Owlboy': The Evolving Art of a 10 Year Project (GDC 2017)",
+        "author": "Jo-Remi Madsen & Simon Stafsnes Andersen, D-Pad Studio",
+        "url": "https://gdcvault.com/play/1024144/-Owlboy-The-Evolving-Art",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "anim-octopath-iteration",
+    "category": "animation",
+    "title": "Iterate the lighting/animation pipeline rather than assuming one pass works",
+    "claim": "Octopath's team found a naive 'add lighting to flat 2D art' approach insufficient and had to iterate their full pipeline.",
+    "project_relevance": "Expect to revisit hero animation/shading rules after first in-engine playtest rather than lock them permanently now.",
+    "examples": [
+      {
+        "game": "Octopath Traveler",
+        "what_to_look_at": "HD-2D pipeline evolution across the project"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Octopath Traveler devs on character origins, visual style, initial HD Rumble plans, much more",
+        "author": "Nintendo Everything",
+        "url": "https://nintendoeverything.com/octopath-traveler-devs-on-character-origins-visual-style-initial-hd-rumble-plans-much-more/",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "anim-pixellab-v3-default",
+    "category": "animation",
+    "title": "PixelLab animate-with-text-v3 is the recommended default animation mode",
+    "claim": "PixelLab's docs state 'v3' animation mode usually produces higher quality results than legacy 'pro' mode and is cheaper; 'pro' mode costs 10-25 generations per direction (80-200 for a full 8-direction set) on subscription.",
+    "project_relevance": "Cost-critical: if/when we spend new PixelLab generations on hero animation, default to v3 mode to conserve the trial budget.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API docs",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/docs",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "mode"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "characters-hld-flat-blocking",
+    "category": "characters",
+    "title": "Heart Machine house vibrancy; flat-blocking-for-legibility is our hypothesis, not a sourced HLD claim",
+    "claim": "Heart Machine (HLD's studio) describes a general house 'vibrancy' feel carried into their new game Possessor(s); the source does not make a specific claim that HLD itself commits to flat colour blocking over gradient shading for character legibility — that mechanism is our own hypothesis to test, not a documented HLD design fact.",
+    "project_relevance": "A legibility option worth testing ourselves if our hero reads poorly against Scene 01's 16-colour env palette, but treat as our hypothesis, not an HLD-sourced fact.",
+    "examples": [
+      {
+        "game": "Hyper Light Drifter",
+        "what_to_look_at": "Flat saturated character colour blocks against environment (our own observation, not sourced to this article)"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Hyper Light Drifter devs talk Possessor(s) and crafting a house style",
+        "author": "Polygon",
+        "url": "https://polygon.com/possessors-heart-machine-developer-interview",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "shading",
+      "detail"
+    ],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "props-unpacking-greybox-workflow",
+    "category": "props/interiors",
+    "title": "Greybox rooms in the art tool before final prop art",
+    "claim": "Unpacking greyboxes rooms directly in Aseprite on a placement grid, then splits furniture into layered pieces for depth before import.",
+    "project_relevance": "A concrete workflow suggestion: greybox Scene 01's prop placement in our own tiling/editor tool before committing final art.",
+    "examples": [
+      {
+        "game": "Unpacking",
+        "what_to_look_at": "Layered furniture depth within a flat iso room"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Intimacy from the inanimate in house-moving puzzler Unpacking",
+        "author": "Gamedeveloper",
+        "url": "https://www.gamedeveloper.com/design/intimacy-from-the-inanimate-in-house-moving-puzzler-unpacking",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "props-unpacking-tooling",
+    "category": "props/interiors",
+    "title": "Angus Doolan's prop-art tool stack (Unpacking)",
+    "claim": "Angus Doolan (Unpacking) uses Aseprite, Blender and Clip Studio Paint; the interview does not document any prior GraphicsGale/Photoshop tooling history or a tool-migration story.",
+    "project_relevance": "Confirms Aseprite is viable prop-art tooling precedent; no evidence here to support a specific tool-migration narrative.",
+    "examples": [
+      {
+        "game": "Unpacking",
+        "what_to_look_at": "Layered, batch-exportable item assets"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Angus Doolan interview",
+        "author": "Muchopixels",
+        "url": "https://www.muchopixels.com/post/angus-doolan-interview",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "drop",
+    "confidence": "low"
+  },
+  {
+    "id": "props-habbo-furni-catalog",
+    "category": "props/interiors",
+    "title": "Build interiors from a shared furniture catalog",
+    "claim": "Habbo Hotel's rooms are entirely assembled from a shared library of interchangeable iso-aligned furniture pieces rather than bespoke room art.",
+    "project_relevance": "Supports building a reusable prop/furniture atlas for Scene 01 (and future rooms) instead of one-off per-room art.",
+    "examples": [
+      {
+        "game": "Habbo Hotel",
+        "what_to_look_at": "Shared furniture type catalog (IFurnitureData) with grid-unit dimensions reused across all rooms instead of bespoke per-room art"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Furniture Architecture (habbo-cc/Habbo-Sky reverse-engineering wiki)",
+        "author": "habbo-cc",
+        "url": "https://github-wiki-see.page/m/habbo-cc/Habbo-Sky/wiki/Furniture-Architecture",
+        "accessed": "2026-10-15"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "props-sims-shadow-pitfall",
+    "category": "props/interiors",
+    "title": "Give every prop a shadow or it floats",
+    "claim": "The Sims' design documentation flags objects without shadows as appearing to float above the floor plane.",
+    "project_relevance": "Hard requirement for every Scene 01 prop: a drop shadow or contact shading against the floor tile.",
+    "examples": [
+      {
+        "game": "The Sims",
+        "what_to_look_at": "Object-shadow treatment vs. floating objects"
+      }
+    ],
+    "sources": [
+      {
+        "title": "The Sims design document PDF",
+        "author": "donhopkins.com",
+        "url": "https://donhopkins.com/home/TheSimsDesignDocuments/TheStateOfTheArtAndGoingForwardToE3.pdf",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "ui-pixellab-generate-ui-endpoint",
+    "category": "ui-in-pixel",
+    "title": "PixelLab has a dedicated pixel-UI generation endpoint",
+    "claim": "PixelLab's generate-ui-v2 endpoint generates pixel-art UI elements (dialogue boxes, health bars, buttons) from a text description.",
+    "project_relevance": "If we ever need in-game pixel UI chrome, this is the documented endpoint — but no craft/game source was found to validate style conventions for it.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API OpenAPI spec",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/openapi.json",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "description",
+      "no_background"
+    ],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "pixellab-cameraview-enum",
+    "category": "pixellab-params",
+    "title": "CameraView enum has no dedicated isometric value",
+    "claim": "The CameraView enum is exactly [\"side\", \"low top-down\", \"high top-down\"]; our 2:1 iso look must be approximated via low/high top-down, not a dedicated iso camera mode.",
+    "project_relevance": "Sets expectations for hero generation: we're choosing the closer-matching top-down variant, not a true iso render — informs the view=='low top-down' vs 'high top-down' A/B test already run in hero v3.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API OpenAPI spec",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/openapi.json",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "view"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "pixellab-unused-style-transfer-fields",
+    "category": "pixellab-params",
+    "title": "Richer style-transfer fields exist but weren't used for hero v3",
+    "claim": "style_description, reference_image / style_character_id, color_image / force_colors exist on other PixelLab endpoints (generate-with-style-v2, create-image-bitforge, transfer-outfit-v2, image-to-pixelart) but were not exercised by the create-character-v3 calls inspected for hero v3.",
+    "project_relevance": "If we want tighter style consistency between hero and env art later, these are the documented levers to reach for — but doing so would spend additional generations, against the current trial-budget constraint.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API docs",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/docs",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "style_description",
+      "reference_image",
+      "style_character_id",
+      "color_image",
+      "force_colors"
+    ],
+    "recommendation": "adapt",
+    "confidence": "med"
+  },
+  {
+    "id": "pixellab-unzoom-before-reference",
+    "category": "pixellab-params",
+    "title": "Run /unzoom before feeding user art to any reference/style endpoint",
+    "claim": "The docs explicitly state that upscaled pixel art confuses PixelLab's style/reference models, and running /unzoom first is 'the most common cause of disappointing output' if skipped.",
+    "project_relevance": "Hard rule for any future workflow where we feed hand-drawn or scanned reference art into PixelLab for style matching.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API docs",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/docs",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "reference_image"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "pixellab-reduce-colors-endpoint",
+    "category": "pixellab-params",
+    "title": "PixelLab has a server-side reduce-colors endpoint as an alternative to local quantization",
+    "claim": "POST /reduce-colors accepts a num_colors parameter to cap a generated image's palette server-side; our current pipeline instead quantizes locally (MEDIANCUT to 48 colours, binarized alpha).",
+    "project_relevance": "Our local quantize_hero.py approach is functionally equivalent and avoids spending an extra generation call; no change recommended, but worth knowing the API alternative exists.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API OpenAPI spec",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/openapi.json",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "num_colors"
+    ],
+    "recommendation": "drop",
+    "confidence": "med"
+  },
+  {
+    "id": "pixellab-create-character-v3-fields-used",
+    "category": "pixellab-params",
+    "title": "Hero v3 create-character-v3 request shape used in practice",
+    "claim": "Actual hero v3 calls set description, image_size (88x88), view, seed, n_directions=8, no_background=true, outline='single color black outline', detail='medium detail', name — the full working parameter set for our pipeline.",
+    "project_relevance": "This is the exact, verified baseline request shape for any future hero generation call, confirmed by direct inspection of our own call logs (not a public source, but ground truth for our pipeline).",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API docs",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/docs",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "description",
+      "image_size",
+      "view",
+      "seed",
+      "n_directions",
+      "no_background",
+      "outline",
+      "detail",
+      "name"
+    ],
+    "recommendation": "keep",
+    "confidence": "high"
+  },
+  {
+    "id": "pixellab-tileset-wang-tiles",
+    "category": "pixellab-params",
+    "title": "create-tileset generates Wang tiles with matching edges",
+    "claim": "POST /create-tileset produces connected Wang tilesets whose edges line up, intended for top-down maps and platformers.",
+    "project_relevance": "A candidate tool for generating our floor/wall tile variants with guaranteed edge continuity, if we spend future generations on environment tiles rather than hand-drawing them.",
+    "examples": [],
+    "sources": [
+      {
+        "title": "PixelLab v2 API docs",
+        "author": "PixelLab",
+        "url": "https://api.pixellab.ai/v2/docs",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [
+      "view"
+    ],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "scoping-stardew-solo-iteration",
+    "category": "readability",
+    "title": "Style can converge through solo iteration, not a formal pipeline",
+    "claim": "Stardew Valley was developed solo by ConcernedApe through direct iteration rather than a formal art pipeline (source confirms solo development; it does not specify his prior pixel-art experience level or an exact iteration duration).",
+    "project_relevance": "Scoping lesson for our small team: budget for iterative art passes over time rather than expecting one perfect pipeline up front.",
+    "examples": [
+      {
+        "game": "Stardew Valley",
+        "what_to_look_at": "Consistent small-palette farm/interior tiles despite a non-formal production process"
+      }
+    ],
+    "sources": [
+      {
+        "title": "The creator of video game Stardew Valley talks its legacy and future",
+        "author": "NPR",
+        "url": "https://www.npr.org/2024/12/19/nx-s1-5217754/the-creator-of-video-game-stardew-valley-talks-its-legacy-and-future",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "adapt",
+    "confidence": "low"
+  },
+  {
+    "id": "scale-octopath-tiledensity-match",
+    "category": "scale/resolution",
+    "title": "Match background tile/texture density to sprite resolution",
+    "claim": "Octopath increased tile/texture variation density so flat 2D sprites don't look 'lonely' against richer 3D backgrounds — background detail should be tuned to match sprite resolution.",
+    "project_relevance": "Directly applicable: our 16-colour env tiles should carry enough visible texture/variation to match the hero sprite's detail level, not read as flatter than the hero.",
+    "examples": [
+      {
+        "game": "Octopath Traveler",
+        "what_to_look_at": "Background tile texture variety relative to character sprite detail"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Project Octopath Traveler developers answer project started troubles developing HD-2D",
+        "author": "Siliconera",
+        "url": "https://www.siliconera.com/project-octopath-traveler-developers-answer-project-started-troubles-developing-hd-2d/",
+        "accessed": "2026-10-14"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "med"
+  },
+  {
+    "id": "scene01-direction-production-method",
+    "category": "Scene 01 direction",
+    "title": "Production method: Blender->pixel vs PixelLab vs hybrid",
+    "claim": "Decision from the 2026-10-15 in-scene spike (hero v3 + 5 Blender->pixel assets composited at zoom 1 and zoom 2, exact integer-grid math, nearest-neighbour): KEEP the Blender->pixel pipeline as the structural foundation for Scene 01 (floors, walls, large built-ins) and run hero-facing props HYBRID (Blender geometry + hand-drawn detail pass). Do NOT drop the pipeline, and do NOT use it as the sole method for props the hero stands next to. Evidence for keep: (a) geometry is exact 2:1 64x32 with no shimmer and crisp pixels at both zooms; hero feet sit on the tile grid, no floating/clipping/draw-order bugs; (b) it beats the current PIL props (iso-engine/assets/props.png) on every visual axis in the side-by-side verdict - stair-stepped hard diagonals vs anti-aliased/fuzzy diagonals, coherent Scandi palette (scene01_palette_v2) vs incoherent earthy reds/yellows/grays, zero noise pixels vs stray specks; (c) cost is negligible - 5 assets in 8.9s total (floor_tile_oak 2.3s, wall_segment_2u 1.2s, bed_wall 2.7s, kitchen_corner 1.3s, sofa 1.4s) with a one-command deterministic rebuild in ~6s. Evidence for hybrid: 3-bucket face-normal toon shading on boxy primitives reads visibly flatter and lower-detail than the hero sprite in the in-scene composite - the ~10 hero-facing furniture items (bed, sofa, kitchen counter, fridge, TV console, lamp, plants, decor) need a hand-drawn detail pass (or PixelLab generate-with-style-v2 with the hero as style reference) over the Blender geometry.",
+    "project_relevance": "Decides how the 23-item Scene 01 furniture list plus 2 floor variants and 5 wall segments get produced, and sets the per-asset cost baseline (~2s/asset, ~6s full rebuild) for future rooms. Independent QA parity score against the same assets runs on t_dd5f77f1; this item is the art-direction decision, not the QA verdict.",
+    "examples": [
+      {
+        "asset": "composite_zoom2.png",
+        "path": "/Users/grit/.hermes/kanban/boards/team-room/workspaces/t_f70e2f26/composite_zoom2.png",
+        "what_to_look_at": "Full in-scene composite at zoom 2: exact 2:1 floor grid, crisp pixels, grounded hero; furniture reads flatter than the hero (the hybrid gap)."
+      },
+      {
+        "asset": "side_by_side.png",
+        "path": "/Users/grit/.hermes/kanban/boards/team-room/workspaces/t_f70e2f26/side_by_side.png",
+        "what_to_look_at": "Left: Blender->pixel composite (crisp, coherent Scandi palette). Right: current PIL props (anti-aliased diagonals, incoherent palette, noise pixels)."
+      }
+    ],
+    "sources": [
+      {
+        "title": "Spike card t_8c5c9aa8 handoff - Blender->pixel pipeline core + floor_tile_oak + wall_segment_2u (timings: calib 2.2s, floor 2.3s, wall 1.2s, full rebuild 6s)",
+        "author": "pixel-art-designer (kanban handoff metadata)",
+        "url": "kanban:t_8c5c9aa8",
+        "accessed": "2026-10-15"
+      },
+      {
+        "title": "Spike card t_8c2cffce handoff - bed_wall, kitchen_corner, sofa furniture sprites (timings: bed 2.7s, kitchen 1.3s, sofa 1.4s)",
+        "author": "pixel-art-designer (kanban handoff metadata)",
+        "url": "kanban:t_8c2cffce",
+        "accessed": "2026-10-15"
+      },
+      {
+        "title": "vision_analyze verdicts on composite_zoom2.png and side_by_side.png (this card, t_f70e2f26)",
+        "author": "pixel-art-designer",
+        "url": "kanban:t_f70e2f26",
+        "accessed": "2026-10-15"
+      }
+    ],
+    "pixellab_params": [],
+    "recommendation": "keep",
+    "confidence": "high"
+  }
+]
