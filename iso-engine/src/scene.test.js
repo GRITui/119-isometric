@@ -5,6 +5,7 @@ import { createScene } from './scene.js';
 import { loadTilemap } from './tilemap.js';
 import { worldToScreen, screenToGrid } from './camera.js';
 import { gridToWorld } from './iso.js';
+import { entityPos } from './movement.js';
 import assert from 'node:assert';
 
 const VW = 800;
@@ -195,4 +196,67 @@ assert.strictEqual(scene.player.state, 'idle');
   assert.strictEqual(s.player.i, 8);
 }
 
-console.log('scene.js: all tests passed (save restore, WASD map, queue, blocked, click A*, zoom, pan)');
+// --- autoFrame: manual zoom/pan persists across update() ticks (t_97a0c254) ---
+// The shipped browser build runs autoFrame=true; syncCamera() used to
+// recompute cx/cy/zoom every tick, reverting handleZoom()/handlePan() within
+// one rAF frame. Manual control must now persist until resetCamera().
+{
+  // Desktop: 16x16 room fits a large viewport -> static room-fit framing.
+  const s = createScene({ tilemap, width: 2048, height: 1200, autoFrame: true });
+  assert.strictEqual(s.camera.zoom, 2, 'room-fit zoom 2');
+  assert.strictEqual(s.camera.cx, 8, 'centered on map');
+  assert.strictEqual(s.camera.cy, 8, 'centered on map');
+
+  // Manual zoom persists across a tick (was reverted before the fix).
+  s.handleZoom(1);
+  assert.strictEqual(s.camera.zoom, 3);
+  s.update(16, 2048, 1200);
+  assert.strictEqual(s.camera.zoom, 3, 'manual zoom persists after tick');
+
+  // Manual pan persists across a tick.
+  s.handlePan(200, 0);
+  const panCx = s.camera.cx;
+  const panCy = s.camera.cy;
+  assert.ok(Math.abs(panCx - 8) > 1e-9 || Math.abs(panCy - 8) > 1e-9, 'pan moved focus');
+  s.update(16, 2048, 1200);
+  assert.strictEqual(s.camera.cx, panCx, 'manual pan cx persists after tick');
+  assert.strictEqual(s.camera.cy, panCy, 'manual pan cy persists after tick');
+
+  // resetCamera() re-engages auto-framing (the explicit reset).
+  s.resetCamera();
+  assert.strictEqual(s.camera.zoom, 2, 'reset restores room-fit zoom');
+  assert.strictEqual(s.camera.cx, 8, 'reset recenters cx');
+  assert.strictEqual(s.camera.cy, 8, 'reset recenters cy');
+}
+
+// --- autoFrame mobile: hero-follow until the user takes over (t_97a0c254) ---
+{
+  // 16x16 room does not fit a phone viewport -> hero-follow at zoom 1.
+  const s = createScene({ tilemap, width: 390, height: 844, autoFrame: true });
+  assert.strictEqual(s.camera.zoom, 1, 'follow mode zoom 1');
+  const p0 = entityPos(s.player);
+  assert.strictEqual(s.camera.cx, p0.fi, 'camera tracks hero');
+  assert.strictEqual(s.camera.cy, p0.fj, 'camera tracks hero');
+
+  // Hero moves -> camera follows each tick.
+  s.handleKey('w');
+  s.update(180, 390, 844);
+  const p1 = entityPos(s.player);
+  assert.notStrictEqual(p1.fi, p0.fi, 'hero moved');
+  assert.strictEqual(s.camera.cx, p1.fi, 'camera follows hero after move');
+
+  // Manual pan stops the follow (user took over) and persists.
+  s.handlePan(50, 0);
+  const mCx = s.camera.cx;
+  const mCy = s.camera.cy;
+  s.update(16, 390, 844);
+  assert.strictEqual(s.camera.cx, mCx, 'manual pan stops hero-follow (cx)');
+  assert.strictEqual(s.camera.cy, mCy, 'manual pan stops hero-follow (cy)');
+
+  // resetCamera() resumes hero-follow.
+  s.resetCamera();
+  const p2 = entityPos(s.player);
+  assert.strictEqual(s.camera.cx, p2.fi, 'reset resumes hero-follow');
+}
+
+console.log('scene.js: all tests passed (save restore, WASD map, queue, blocked, click A*, zoom, pan, autoFrame manual gating)');

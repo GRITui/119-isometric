@@ -15,6 +15,9 @@ import { createRenderer, loadAtlas } from './renderer.js';
 // update() — room-fit static camera on desktop, hero-follow zoom-1 camera
 // when the room doesn't fit the viewport (mobile/portrait). Default false
 // preserves the plain save/center camera (generic engine + tests).
+// Manual camera control: a handleZoom()/handlePan() call sets scene.manual,
+// which stops syncCamera() from overriding the camera. The manual state
+// persists until resetCamera() (wired to window resize) re-engages framing.
 export function createScene({ tilemap, save = null, width = 800, height = 600, autoFrame = false }) {
   const camera = save
     ? createCamera(save.camera.cx, save.camera.cy, save.camera.zoom)
@@ -23,7 +26,7 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
     ? createEntity(save.player.i, save.player.j, save.player.z ?? 0, save.player.facing ?? 's')
     : createEntity(Math.floor(tilemap.w / 2), Math.floor(tilemap.h / 2));
 
-  const scene = { tilemap, camera, player, width, height, renderer: null };
+  const scene = { tilemap, camera, player, width, height, renderer: null, manual: false };
 
   // WASD/arrows: one-tile step; queued while moving.
   scene.handleKey = (key) => {
@@ -46,8 +49,10 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
     if (path) setPath(player, path);
   };
 
-  // Right/middle drag pan.
+  // Right/middle drag pan. Manual camera control: stops auto-framing so the
+  // pan persists across ticks until resetCamera()/resize re-engages it.
   scene.handlePan = (dx, dy) => {
+    scene.manual = true;
     const n = panByScreen(dx, dy, camera, camera.zoom, tilemap.w, tilemap.h);
     camera.cx = n.cx;
     camera.cy = n.cy;
@@ -56,8 +61,10 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
   // 'E' / interact key: plays the hero's interact animation in place.
   scene.handleInteract = () => triggerInteract(player);
 
-  // Wheel / +/-: integer zoom, clamped 1..3 (HIRES_V2).
+  // Wheel / +/-: integer zoom, clamped 1..3 (HIRES_V2). Manual camera
+  // control: stops auto-framing so the zoom persists until resetCamera().
   scene.handleZoom = (delta) => {
+    scene.manual = true;
     camera.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, camera.zoom + Math.sign(delta || 1)));
   };
 
@@ -78,6 +85,7 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
   // fits (desktop). Otherwise follow the hero at zoom 1 so the hero is
   // always fully on screen, no fractional zoom (mobile/portrait).
   scene.syncCamera = (vw, vh) => {
+    if (scene.manual) return; // user took over the camera; respect it
     const room = roomPixelSize(tilemap.w, tilemap.h);
     if (roomFits(room.w, room.h, vw, vh)) {
       camera.zoom = fitZoom(room.w, room.h, vw, vh);
@@ -89,6 +97,14 @@ export function createScene({ tilemap, save = null, width = 800, height = 600, a
       camera.cx = pos.fi;
       camera.cy = pos.fj;
     }
+  };
+
+  // Re-engage auto-framing: clear the manual zoom/pan override and re-fit.
+  // Wired to window resize in initBrowserScene(); the "reset" that manual
+  // camera control persists until.
+  scene.resetCamera = () => {
+    scene.manual = false;
+    scene.syncCamera(scene.width, scene.height);
   };
 
   if (autoFrame) scene.syncCamera(width, height);
@@ -115,7 +131,7 @@ export async function initBrowserScene(canvas) {
   const resize = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    if (scene) { scene.width = canvas.width; scene.height = canvas.height; scene.syncCamera(canvas.width, canvas.height); }
+    if (scene) { scene.width = canvas.width; scene.height = canvas.height; scene.resetCamera(); }
   };
   let scene;
   resize();
