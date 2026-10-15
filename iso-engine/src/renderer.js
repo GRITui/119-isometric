@@ -234,28 +234,36 @@ export function heroFrame(anim, animName, progress) {
   return frames[Math.floor(t / 400) % frames.length];
 }
 
+// The hero frame index this drawable is currently drawn with (null when the
+// atlas has no hero animation for this facing — placeholder path). Shared by
+// drawEntity() and screenBox() so the F-01 occlusion test measures the exact
+// frame that was painted.
+function heroFrameFor(d, atlas) {
+  if (!atlas || !atlas.animations || !atlas.animations.hero) return null;
+  const dirAnim = atlas.animations.hero[d.facing.toUpperCase()];
+  if (!dirAnim) return null;
+  const animName = d.action === 'interact' ? 'interact' : (d.state === 'moving' ? 'walk' : 'idle');
+  return heroFrame(dirAnim, animName, d.progress);
+}
+
 function drawEntity(ctx, d, cam, vw, vh, atlas) {
   const A = toScreen({ x: d.x, y: d.y + TILE_H }, cam, vw, vh); // feet
   const s = cam.zoom;
-  if (atlas && atlas.animations && atlas.animations.hero) {
-    const dirAnim = atlas.animations.hero[d.facing.toUpperCase()];
-    if (dirAnim) {
-      const animName = d.action === 'interact' ? 'interact' : (d.state === 'moving' ? 'walk' : 'idle');
-      const frame = heroFrame(dirAnim, animName, d.progress);
-      const sheetIdx = atlas.heroSheet;
-      const img = atlas.images[sheetIdx];
-      const sheet = atlas.sheets[sheetIdx];
-      if (img && img.complete && img.naturalWidth > 0) {
-        const col = frame % sheet.cols;
-        const row = Math.floor(frame / sheet.cols);
-        const w = sheet.cellW * s;
-        const h = sheet.cellH * s;
-        ctx.drawImage(
-          img, col * sheet.cellW, row * sheet.cellH, sheet.cellW, sheet.cellH,
-          A.x - w / 2, A.y - h, w, h,
-        );
-        return;
-      }
+  const frame = heroFrameFor(d, atlas);
+  if (frame != null) {
+    const sheetIdx = atlas.heroSheet;
+    const img = atlas.images[sheetIdx];
+    const sheet = atlas.sheets[sheetIdx];
+    if (img && img.complete && img.naturalWidth > 0) {
+      const col = frame % sheet.cols;
+      const row = Math.floor(frame / sheet.cols);
+      const w = sheet.cellW * s;
+      const h = sheet.cellH * s;
+      ctx.drawImage(
+        img, col * sheet.cellW, row * sheet.cellH, sheet.cellW, sheet.cellH,
+        A.x - w / 2, A.y - h, w, h,
+      );
+      return;
     }
   }
   ctx.fillStyle = '#3b6fd4'; // body
@@ -264,15 +272,30 @@ function drawEntity(ctx, d, cam, vw, vh, atlas) {
   ctx.fillRect(A.x - 8 * s, A.y - 44 * s, 16 * s, 16 * s);
 }
 
-// Screen-space AABB a drawable occupies (used for occlusion testing only;
-// matches the boxes drawProp/drawEntity actually paint. When an atlas cell
-// is loaded for this drawable, read its real w/h — same source
-// drawProp()/drawEntity() use — instead of the placeholder box, since the
-// placeholder math is far smaller than the real atlas sprite footprint.
-function screenBox(d, cam, vw, vh, atlas = null) {
+// Screen-space AABB a drawable occupies (used for occlusion testing only).
+// When the atlas carries a trimmed opaque-pixel bbox for this drawable
+// (atlas.opaque, computed once at load by loadAtlas() from the actual sheet
+// pixels), hit-test THAT: the export canvas (sheet.cellW x cellH) is padded
+// with transparent margin around the real art, and testing the padded canvas
+// false-positives the F-01 cue almost everywhere (t_57fbefc7). Falls back to
+// the full cell box (or the placeholder box) when no opaque data exists.
+// Opaque bboxes are cell-local px; the cell is painted bottom-center-anchored
+// at A with size (cellW*s, cellH*s), so cell-local (ox, oy) maps to
+// (A.x - cellW*s/2 + ox*s, A.y - cellH*s + oy*s).
+export function screenBox(d, cam, vw, vh, atlas = null) {
   const s = cam.zoom;
   if (d.kind === 'entity') {
     const A = toScreen({ x: d.x, y: d.y + TILE_H }, cam, vw, vh);
+    const frame = heroFrameFor(d, atlas);
+    const ob = frame != null && atlas && atlas.opaque && atlas.opaque.hero ? atlas.opaque.hero[frame] : null;
+    if (ob) {
+      const sheet = atlas.sheets[atlas.heroSheet];
+      const cw = sheet.cellW * s;
+      const ch = sheet.cellH * s;
+      const x0 = A.x - cw / 2 + ob.x * s;
+      const y0 = A.y - ch + ob.y * s;
+      return { x0, x1: x0 + ob.w * s, y0, y1: y0 + ob.h * s };
+    }
     if (atlas && atlas.heroSheet != null) {
       const sheet = atlas.sheets[atlas.heroSheet];
       if (sheet) {
@@ -286,7 +309,15 @@ function screenBox(d, cam, vw, vh, atlas = null) {
   // prop
   const A = anchorScreen(d.i, d.j, d.z, cam, vw, vh);
   const found = atlasCell(atlas, 'sprites', d.asset);
+  const ob = atlas && atlas.opaque && atlas.opaque.sprites ? atlas.opaque.sprites[d.asset] : null;
   if (found) {
+    if (ob) {
+      const cw = found.cell.w * s;
+      const ch = found.cell.h * s;
+      const x0 = A.x - cw / 2 + ob.x * s;
+      const y0 = A.y - ch + ob.y * s;
+      return { x0, x1: x0 + ob.w * s, y0, y1: y0 + ob.h * s };
+    }
     const w = found.cell.w * s;
     const h = found.cell.h * s;
     return { x0: A.x - w / 2, x1: A.x + w / 2, y0: A.y - h, y1: A.y };
@@ -329,19 +360,27 @@ export function isEntityOccluded(drawables, cam, vw, vh, atlas = null) {
 
 // Draw a translucent outline silhouette for the entity, on top of whatever
 // occluded it, so the player stays visually locatable (fix option (b)).
+// Colours are SOT-palette only (ink / shadow / ground_3 from iso_art_spec.md)
+// — the old placeholder blue (#3b6fd4) / skin (#e8c39e) / white (#ffffff)
+// box is off-palette and stale now that real hero v3 art is loaded
+// (t_57fbefc7). Sized to the real HIRES_V2 hero footprint (HERO_H_MAX world
+// px tall) rather than the 44px placeholder stub, so the silhouette tracks
+// the actual sprite it's standing in for.
 function drawOcclusionCue(ctx, entity, cam, vw, vh) {
   const A = toScreen({ x: entity.x, y: entity.y + TILE_H }, cam, vw, vh); // feet
   const s = cam.zoom;
+  const h = HERO_H_MAX * s; // 96px world, bottom-anchored at feet
+  const w = 48 * s;         // character footprint width
   ctx.save();
   ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = '#ffffff';
+  ctx.strokeStyle = LABEL_INK; // ink #101418
   ctx.lineWidth = Math.max(1, 2 * s);
-  ctx.strokeRect(A.x - 10 * s, A.y - 44 * s, 20 * s, 44 * s);
-  ctx.fillStyle = '#3b6fd4';
+  ctx.strokeRect(A.x - w / 2, A.y - h, w, h);
   ctx.globalAlpha = 0.35;
-  ctx.fillRect(A.x - 10 * s, A.y - 28 * s, 20 * s, 24 * s);
-  ctx.fillStyle = '#e8c39e';
-  ctx.fillRect(A.x - 8 * s, A.y - 44 * s, 16 * s, 16 * s);
+  ctx.fillStyle = '#2a2e3e'; // shadow #2a2e3e (body)
+  ctx.fillRect(A.x - w / 2 + s, A.y - h * 0.62, w - 2 * s, h * 0.62 - s);
+  ctx.fillStyle = LABEL_GROUND3; // ground_3 #a3b1bd (head)
+  ctx.fillRect(A.x - w / 2 + 2 * s, A.y - h, w - 4 * s, h * 0.28);
   ctx.restore();
 }
 
@@ -413,9 +452,67 @@ export function createRenderer(canvas, tilemap) {
   };
 }
 
+// Trimmed opaque-pixel bbox of one cell region of a decoded sheet, in
+// cell-local px (alpha > 0 = opaque — same rule as import-pixellab's
+// opaqueBBox). Returns null for a fully transparent cell.
+function opaqueCellBBox(imgData, cx, cy, cw, ch) {
+  let minX = cw, minY = ch, maxX = -1, maxY = -1;
+  for (let y = 0; y < ch; y++) {
+    const py = cy + y;
+    if (py >= imgData.height) break;
+    for (let x = 0; x < cw; x++) {
+      const px = cx + x;
+      if (px >= imgData.width) break;
+      if (imgData.data[(py * imgData.width + px) * 4 + 3] > 0) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return null;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+// One-time per-sheet pass (browser only): decode the loaded sheet image and
+// store the trimmed opaque bbox of every hero cell (keyed by frame index)
+// and every sprite cell (keyed by name) on atlas.opaque. screenBox() uses
+// these for the F-01 occlusion test instead of the padded export-canvas
+// size (t_57fbefc7). Tiles are not scanned — they never occlude the entity.
+function computeSheetOpaque(atlas, sheetIdx, img) {
+  const sheet = atlas.sheets[sheetIdx];
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  if (sheetIdx === atlas.heroSheet) {
+    const rows = Math.floor(img.naturalHeight / sheet.cellH);
+    for (let f = 0; f < rows * sheet.cols; f++) {
+      const ob = opaqueCellBBox(
+        imgData,
+        (f % sheet.cols) * sheet.cellW,
+        Math.floor(f / sheet.cols) * sheet.cellH,
+        sheet.cellW,
+        sheet.cellH,
+      );
+      if (ob) atlas.opaque.hero[f] = ob;
+    }
+  }
+  for (const [name, cell] of Object.entries(atlas.sprites)) {
+    if (cell.sheet !== sheetIdx) continue;
+    const ob = opaqueCellBBox(imgData, cell.x, cell.y, cell.w ?? sheet.cellW, cell.h ?? sheet.cellH);
+    if (ob) atlas.opaque.sprites[name] = ob;
+  }
+}
+
 // Browser: load an atlas manifest (ATLAS_SCHEMA.md: { sheets, tiles, sprites,
 // animations }) and its sheet PNGs. Returns null when missing (404) so the
-// procedural placeholder keeps rendering.
+// procedural placeholder keeps rendering. As each sheet image finishes
+// loading, its trimmed opaque bboxes are computed onto atlas.opaque (see
+// computeSheetOpaque) for the F-01 occlusion hit-test.
 export async function loadAtlas(manifestUrl) {
   const res = await fetch(manifestUrl);
   if (!res.ok) return null;
@@ -426,7 +523,7 @@ export async function loadAtlas(manifestUrl) {
     return img;
   });
   const heroSheet = (manifest.sheets ?? []).findIndex((s) => /hero\.png$/.test(s.file));
-  return {
+  const atlas = {
     version: manifest.version,
     sheets: manifest.sheets ?? [],
     tiles: manifest.tiles ?? {},
@@ -434,5 +531,18 @@ export async function loadAtlas(manifestUrl) {
     animations: manifest.animations ?? {},
     heroSheet: heroSheet < 0 ? null : heroSheet,
     images,
+    // Trimmed opaque bboxes (cell-local px), filled in by computeSheetOpaque
+    // as each sheet image loads. screenBox() hit-tests these instead of the
+    // padded export-canvas size; absent entries fall back to the cell box.
+    opaque: { hero: {}, sprites: {} },
   };
+  images.forEach((img, sheetIdx) => {
+    const onReady = () => {
+      try { computeSheetOpaque(atlas, sheetIdx, img); }
+      catch { /* opaque data is optional: screenBox falls back to cell size */ }
+    };
+    if (img.complete && img.naturalWidth > 0) onReady();
+    else img.onload = onReady;
+  });
+  return atlas;
 }

@@ -1,4 +1,4 @@
-import { collectDrawables, tileColor, isEntityOccluded, draw, heroFrame } from './renderer.js';
+import { collectDrawables, tileColor, isEntityOccluded, draw, heroFrame, screenBox } from './renderer.js';
 import { loadTilemap } from './tilemap.js';
 import { createEntity } from './movement.js';
 import { createCamera } from './camera.js';
@@ -213,4 +213,48 @@ assert.strictEqual(isEntityOccluded(dClear, fixtureCam, 1000, 1000), false, 'F-0
   assert.strictEqual(anim.idle.includes(heroFrame(anim, 'missingState', 0)), true);
 }
 
-console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue, F-01 atlas regression, variable frame counts)');
+// --- F-01 opaque-bbox (t_59081b72): trimmed silhouette boxes, not the padded
+// export canvas. The 128x128 cell is padded with transparent margin around the
+// real ~30-90px art; hit-testing the padded canvas false-positives the cue
+// almost everywhere. screenBox() must use the trimmed opaque bbox when present.
+{
+  const fakeImg = { complete: true, naturalWidth: 128 };
+  // Deterministic frame: facing 's', state 'moving', progress 0 -> walk[0]=16.
+  const opaqueAtlas = {
+    sheets: [
+      { file: 'hero.png', cellW: 128, cellH: 128, cols: 8 },
+      { file: 'props.png', cellW: 128, cellH: 128, cols: 4 },
+    ],
+    images: [fakeImg, fakeImg],
+    heroSheet: 0,
+    tiles: {},
+    sprites: { spr_shelf_0: { sheet: 1, x: 0, y: 0, w: 128, h: 128 } },
+    animations: { hero: { S: { walk: [16], idle: [16], interact: [16] } } },
+    // Narrow opaque silhouettes (cell-local px): hero 20px wide, shelf 20px wide.
+    opaque: { hero: { 16: { x: 54, y: 50, w: 20, h: 60 } }, sprites: { spr_shelf_0: { x: 54, y: 40, w: 20, h: 80 } } },
+  };
+  const doc2 = { version: 1, w: 6, h: 6, defaultTile: 'tile_grass_0', tiles: [], props: [{ id: 'p1', asset: 'spr_shelf_0', i: 2, j: 0, z: 0, footprint: [[2, 0]] }] };
+  const tm2 = loadTilemap(doc2);
+  const cam2 = createCamera(1, 1, 1);
+  const hero = createEntity(0, 0);
+  hero.facing = 's'; hero.state = 'moving'; hero.progress = 0;
+  const d2 = collectDrawables(tm2, hero, cam2, 1000, 1000);
+  const ent2 = d2.find((x) => x.kind === 'entity');
+
+  // (1) screenBox() with opaque data returns the TIGHT silhouette box — strictly
+  // smaller than the full 128x128 cell box it would fall back to.
+  const tight = screenBox(ent2, cam2, 1000, 1000, opaqueAtlas);
+  const full = screenBox(ent2, cam2, 1000, 1000, { ...opaqueAtlas, opaque: undefined });
+  const area = (b) => (b.x1 - b.x0) * (b.y1 - b.y0);
+  assert.ok(area(tight) < area(full), 'F-01 opaque: silhouette box is smaller than the padded cell box');
+  assert.strictEqual(tight.x0, full.x0 + 54 * cam2.zoom, 'F-01 opaque: box shifted by opaque offset x');
+  assert.strictEqual(tight.x1, full.x1 - (128 - 54 - 20) * cam2.zoom, 'F-01 opaque: right edge trimmed to opaque width');
+
+  // (2) isEntityOccluded(): the shelf is 2 tiles right of the hero. The full
+  // 128px cell boxes overlap (the pre-fix false positive), but the narrow 20px
+  // silhouette boxes do NOT — so the cue must not fire with opaque data.
+  assert.strictEqual(isEntityOccluded(d2, cam2, 1000, 1000, opaqueAtlas), false, 'F-01 opaque: non-overlapping silhouettes -> no false positive');
+  assert.strictEqual(isEntityOccluded(d2, cam2, 1000, 1000, { ...opaqueAtlas, opaque: undefined }), true, 'F-01 opaque: overlapping padded cell boxes -> the pre-fix false positive');
+}
+
+console.log('renderer.js: all tests passed (depth sort, elevation, cull, deterministic color, F-01 occlusion cue, F-01 atlas regression, F-01 opaque-bbox, variable frame counts)');
