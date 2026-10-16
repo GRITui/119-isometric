@@ -1,0 +1,76 @@
+{
+  "scene": "scene01_scandi_studio",
+  "version": 2,
+  "light_direction": "NW",
+  "notes": "Shadow side hue-shifted cooler/blue, lit side hue-shifted warmer. No flat darken/lighten.",
+  "total_colours": 25,
+  "ramps": [
+    {
+      "ramp": "oak_floor_wood",
+      "description": "Light oak floor + wood furniture, warm base, NW lit",
+      "colours": [
+        {"name": "oak_shadow_2", "hex": "#6B5440", "step": 1},
+        {"name": "oak_shadow_1", "hex": "#8A6B4E", "step": 2},
+        {"name": "oak_base",     "hex": "#C19A6B", "step": 3},
+        {"name": "oak_light_1",  "hex": "#E0B98A", "step": 4},
+        {"name": "oak_light_2",  "hex": "#F3D9A8", "step": 5}
+      ]
+    },
+    {
+      "ramp": "warm_white_wall",
+      "description": "Primary wall colour, warm white, slight NW light falloff",
+      "colours": [
+        {"name": "wall_shadow",  "hex": "#D8CFC0", "step": 1},
+        {"name": "wall_base",    "hex": "#EFE7D8", "step": 2},
+        {"name": "wall_light_1", "hex": "#F9F2E4", "step": 3},
+        {"name": "wall_light_2", "hex": "#FFFBF2", "step": 4}
+      ]
+    },
+    {
+      "ramp": "light_grey_secondary",
+      "description": "Secondary wall / trim / baseboard grey",
+      "colours": [
+        {"name": "grey_trim_shadow", "hex": "#A9ADB0", "step": 1},
+        {"name": "grey_trim_base",   "hex": "#C6CACC", "step": 2},
+        {"name": "grey_trim_light",  "hex": "#E2E5E6", "step": 3}
+      ]
+    },
+    {
+      "ramp": "textile_grey",
+      "description": "Bedding / sofa upholstery grey, cool-neutral",
+      "colours": [
+        {"name": "textile_shadow_2", "hex": "#6E7478", "step": 1},
+        {"name": "textile_shadow_1", "hex": "#8D9398", "step": 2},
+        {"name": "textile_base",     "hex": "#B3B8BC", "step": 3},
+        {"name": "textile_light",    "hex": "#D4D8DA", "step": 4},
+        {"name": "textile_light_2",  "hex": "#E8EAEB", "step": 5}
+      ]
+    },
+    {
+      "ramp": "sage_green_plants",
+      "description": "Plant foliage, sage/muted green",
+      "colours": [
+        {"name": "sage_shadow", "hex": "#5E6F52", "step": 1},
+        {"name": "sage_base",   "hex": "#8A9A74", "step": 2},
+        {"name": "sage_light",  "hex": "#B3C19D", "step": 3},
+        {"name": "sage_light_2", "hex": "#CBD4B9", "step": 4}
+      ]
+    },
+    {
+      "ramp": "black_accents",
+      "description": "Window frames, hardware, TV, near-black with slight warm/cool split",
+      "colours": [
+        {"name": "accent_black",       "hex": "#201E1C", "step": 1},
+        {"name": "accent_black_light", "hex": "#3A3734", "step": 2}
+      ]
+    },
+    {
+      "ramp": "window_sky_glass",
+      "description": "Window sky/glass tone, cool, slightly desaturated",
+      "colours": [
+        {"name": "glass_shadow", "hex": "#9FB3BE", "step": 1},
+        {"name": "glass_light",  "hex": "#C7D7DE", "step": 2}
+      ]
+    }
+  ]
+}
