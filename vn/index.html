@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>9:47</title>
+<style>
+  /* 9:47 VN — dark/neon language per SPEC.md */
+  :root {
+    --bg: #05070d;
+    --teal: #5eead4;
+    --border: #1c2b33;
+    --text: #d8e2e8;
+    --muted: #6b7d85;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #000; overflow: hidden; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #app {
+    position: relative;
+    width: 100vw; height: 100vh;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  /* z1: background */
+  #bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 400ms ease;
+  }
+  #bg.on { opacity: 1; }
+  /* z2: grid overlay */
+  #grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(94,234,212,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(94,234,212,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  /* z3: vignette */
+  #vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.4) 100%);
+  }
+  /* z4: portrait */
+  .vn-portrait {
+    position: absolute; bottom: 0; width: 320px; height: 420px;
+    pointer-events: none;
+  }
+  .vn-portrait.pos-left { left: 48px; }
+  .vn-portrait.pos-right { right: 48px; }
+  .vn-portrait.pos-center { left: 50%; transform: translateX(-50%); }
+  .vn-portrait-img {
+    position: absolute; bottom: 0; left: 0;
+    width: 100%; height: 100%; object-fit: cover; object-position: bottom;
+    opacity: 0; transition: opacity 150ms ease;
+  }
+  /* z5: dialog box */
+  .vn-dialog {
+    position: absolute; left: 48px; right: 48px; bottom: 48px;
+    height: 160px;
+    background: rgba(5,7,13,0.82);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--teal);
+    border-radius: 8px;
+    display: flex; flex-direction: column;
+  }
+  .vn-dialog.hidden { display: none; }
+  .vn-dialog-name {
+    height: 40px; line-height: 40px; padding: 0 12px;
+    color: var(--teal); font-size: 13px; letter-spacing: 0.12em;
+  }
+  .vn-dialog-name.empty { visibility: hidden; }
+  .vn-dialog-text {
+    flex: 1; padding: 0 12px; overflow: hidden;
+    color: var(--text); font-size: 16px; line-height: 1.6;
+  }
+  .vn-dialog-arrow {
+    position: absolute; right: 12px; bottom: 8px;
+    color: var(--teal); font-size: 14px; opacity: 0;
+  }
+  .vn-dialog-arrow.pulse { opacity: 1; animation: pulse 1s ease infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  /* z5: choice UI */
+  .vn-choices {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    display: none; flex-direction: column; gap: 12px; align-items: center;
+  }
+  .vn-choices.visible { display: flex; }
+  .vn-choice {
+    width: 360px; height: 52px;
+    background: rgba(5,7,13,0.7);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 16px; cursor: pointer;
+    font-family: inherit;
+  }
+  .vn-choice:hover {
+    border-color: var(--teal); background: rgba(94,234,212,0.1); color: #fff;
+  }
+  /* z6: full-bleed screens */
+  .vn-screen {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .vn-title-name {
+    font-size: 72px; letter-spacing: 0.3em; color: var(--teal);
+    text-shadow: 0 0 24px rgba(94,234,212,0.3);
+  }
+  .vn-title-sub {
+    margin-top: 16px; font-size: 14px; color: var(--muted); letter-spacing: 0.2em;
+  }
+  .vn-title-menu { margin-top: 48px; display: flex; flex-direction: column; gap: 24px; }
+  .vn-btn {
+    width: 200px; height: 48px;
+    background: rgba(5,7,13,0.6);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 14px; letter-spacing: 0.12em; cursor: pointer;
+    font-family: inherit;
+  }
+  .vn-btn:hover { border-color: var(--teal); background: rgba(94,234,212,0.08); }
+  .vn-btn-primary { border-color: var(--teal); }
+  .vn-ending-title { font-size: 36px; letter-spacing: 0.2em; color: var(--teal); }
+  .vn-ending-text {
+    margin-top: 32px; max-width: 560px; text-align: center;
+    font-size: 18px; color: var(--text); line-height: 1.8;
+  }
+  .vn-ending-btns { margin-top: 48px; display: flex; gap: 16px; }
+  .vn-saves { gap: 16px; }
+  .vn-back {
+    position: absolute; top: 24px; left: 24px;
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 12px; letter-spacing: 0.12em;
+    font-family: inherit;
+  }
+  .vn-back:hover { color: var(--teal); }
+  .vn-save-list { display: flex; flex-direction: column; gap: 16px; }
+  .vn-save-slot {
+    width: 320px; height: 56px;
+    background: rgba(5,7,13,0.6);
+    border: 1px solid var(--border); border-radius: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; cursor: pointer;
+  }
+  .vn-save-slot:hover { border-color: var(--teal); }
+  .vn-save-label { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; }
+  .vn-save-ts { color: var(--muted); font-size: 12px; }
+  /* HUD: save button during story */
+  #hud-save {
+    position: absolute; top: 24px; right: 24px; z-index: 10;
+    display: none;
+  }
+  #hud-save.visible { display: block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bg"></div>
+  <div id="grid"></div>
+  <div id="vignette"></div>
+  <div id="portrait-layer"></div>
+  <div id="dialog-layer"></div>
+  <button id="hud-save" class="vn-btn" style="width:120px;height:36px;font-size:12px;">SAVE</button>
+  <div id="screen-layer"></div>
+</div>
+<script type="module">
+  import { getNode, speakerName, isEnding, nextId, choices, choose } from './src/engine.js';
+  import { createDialog } from './src/dialog.js';
+  import { createPortrait } from './src/portrait.js';
+  import { browserSaveStore } from './src/save.js';
+  import { showTitle, showEnding, showSaveSlots } from './src/title.js';
+
+  const $ = (id) => document.getElementById(id);
+  const app = $('app');
+  const bgEl = $('bg');
+  const screenLayer = $('screen-layer');
+
+  // --- data ----------------------------------------------------------------
+  const story = await (await fetch('data/story.json')).json();
+  const chars = await (await fetch('data/characters.json')).json();
+
+  // --- modules -------------------------------------------------------------
+  const saves = browserSaveStore(localStorage);
+  const portrait = createPortrait($('portrait-layer'));
+  const dialog = createDialog($('dialog-layer'), {
+    speedMs: 30,
+    onAdvance: advance,
+    onChoice: (i) => {
+      const id = currentId;
+      currentId = choose(story, id, i);
+      enterNode();
+    },
+  });
+
+  // --- state ---------------------------------------------------------------
+  let currentId = null;
+  let screen = null; // active full-bleed screen handle
+  let bgCurrent = null;
+
+  function setBg(name) {
+    if (!name || name === bgCurrent) return;
+    bgCurrent = name;
+    bgEl.style.backgroundImage = `url(assets/bg_${name}.png)`;
+    // force reflow, then fade in
+    void bgEl.offsetWidth;
+    bgEl.classList.add('on');
+  }
+
+  function clearScreens() {
+    if (screen) { screen.destroy(); screen = null; }
+  }
+
+  function enterNode() {
+    const node = getNode(story, currentId);
+    if (isEnding(story, currentId)) {
+      clearScreens();
+      $('hud-save').classList.remove('visible');
+      portrait.show(null);
+      dialog.hide();
+      screen = showEnding(screenLayer, {
+        endingTitle: node.endingTitle ?? 'ENDING',
+        endingText: node.text,
+        onTitle: () => { clearScreens(); showTitleScreen(); },
+        onReplay: () => { clearScreens(); startGame(story.start); },
+      });
+      return;
+    }
+    setBg(node.bg);
+    portrait.show(node.portrait);
+    const opts = choices(story, currentId);
+    if (opts.length) {
+      dialog.showChoices(opts);
+    } else {
+      dialog.show(speakerName(story, chars, currentId), node.text);
+    }
+  }
+
+  function startGame(nodeId) {
+    currentId = nodeId;
+    $('hud-save').classList.add('visible');
+    enterNode();
+  }
+
+  function advance() {
+    if (dialog.isTyping()) { dialog.complete(); return; }
+    const id = nextId(story, currentId);
+    if (id) { currentId = id; enterNode(); }
+  }
+
+  // --- title / save screens -------------------------------------------------
+  function showTitleScreen() {
+    clearScreens();
+    portrait.show(null);
+    dialog.hide();
+    bgCurrent = null;
+    bgEl.classList.remove('on');
+    screen = showTitle(screenLayer, {
+      onNewGame: () => { clearScreens(); startGame(story.start); },
+      onLoad: () => { clearScreens(); showSaveScreen('load'); },
+    });
+  }
+
+  function showSaveScreen(mode) {
+    clearScreens();
+    screen = showSaveSlots(screenLayer, {
+      list: saves.list(),
+      mode,
+      onBack: () => {
+        if (mode === 'load') showTitleScreen();
+        else enterNode(); // back to story
+      },
+      onPick: (slot) => {
+        if (mode === 'load') {
+          const rec = saves.load(slot);
+          if (rec) { clearScreens(); startGame(rec.nodeId); }
+        } else {
+          saves.save(slot, currentId, speakerName(story, chars, currentId));
+          showSaveScreen('save'); // refresh timestamps
+        }
+      },
+    });
+  }
+
+  $('hud-save').addEventListener('click', () => showSaveScreen('save'));
+
+  // --- input ----------------------------------------------------------------
+  app.addEventListener('click', (e) => {
+    if (e.target.closest('.vn-btn') || e.target.closest('.vn-choice') ||
+        e.target.closest('.vn-save-slot') || e.target.closest('.vn-back') ||
+        e.target.closest('#hud-save')) return;
+    if (screen) return; // title/ending/save screens own their input
+    advance();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (!screen) advance();
+    }
+  });
+
+  showTitleScreen();
+</script>
+</body>
+</html>
