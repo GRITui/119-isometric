@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "project": "9:47-vn",
+  "sheets": [
+    {
+      "file": "portraits.png",
+      "cellW": 256,
+      "cellH": 256,
+      "cols": 3,
+      "rows": 2
+    }
+  ],
+  "portraits": {
+    "kenji_neutral": {
+      "sheet": 0,
+      "x": 0,
+      "y": 0,
+      "w": 256,
+      "h": 256
+    },
+    "kenji_worn": {
+      "sheet": 0,
+      "x": 256,
+      "y": 0,
+      "w": 256,
+      "h": 256
+    },
+    "mina_neutral": {
+      "sheet": 0,
+      "x": 512,
+      "y": 0,
+      "w": 256,
+      "h": 256
+    },
+    "mina_warm": {
+      "sheet": 0,
+      "x": 0,
+      "y": 256,
+      "w": 256,
+      "h": 256
+    },
+    "daichi_neutral": {
+      "sheet": 0,
+      "x": 256,
+      "y": 256,
+      "w": 256,
+      "h": 256
+    },
+    "daichi_anxious": {
+      "sheet": 0,
+      "x": 512,
+      "y": 256,
+      "w": 256,
+      "h": 256
+    }
+  },
+  "backgrounds": {
+    "bg_apartment": {
+      "file": "bg_apartment.png",
+      "w": 960,
+      "h": 540
+    },
+    "bg_shop": {
+      "file": "bg_shop.png",
+      "w": 960,
+      "h": 540
+    },
+    "bg_platform": {
+      "file": "bg_platform.png",
+      "w": 960,
+      "h": 540
+    }
+  },
+  "characters": {
+    "kenji": [
+      "kenji_neutral",
+      "kenji_worn"
+    ],
+    "mina": [
+      "mina_neutral",
+      "mina_warm"
+    ],
+    "daichi": [
+      "daichi_neutral",
+      "daichi_anxious"
+    ]
+  },
+  "palette": [
+    "#05070d",
+    "#5eead4",
+    "#2a7a6e",
+    "#1c2b33",
+    "#d8e2e8",
+    "#6b7d85",
+    "#3a464e",
+    "#141a20",
+    "#e8c39e",
+    "#c49a72",
+    "#1a1f24",
+    "#3a2a22",
+    "#0e1114",
+    "#232a33",
+    "#39424d",
+    "#0f6b5c",
+    "#cfd8dd",
+    "#9aa7ad",
+    "#1a2027",
+    "#2c343d",
+    "#d8e2e8",
+    "#f3d9a8",
+    "#e0b98a",
+    "#8a6b4e",
+    "#4a3826",
+    "#6b5440",
+    "#8a6b4e",
+    "#c19a6b",
+    "#0a0e14",
+    "#e8e2d4",
+    "#7ff5e3"
+  ]
+}
