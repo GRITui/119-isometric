@@ -1,0 +1,28 @@
+{
+  "characters": [
+    {
+      "id": "kenji",
+      "name": "Kenji",
+      "expressions": [
+        { "id": "kenji_neutral", "label": "neutral", "file": "portraits.png" },
+        { "id": "kenji_worn", "label": "worn", "file": "portraits.png" }
+      ]
+    },
+    {
+      "id": "mina",
+      "name": "Mina",
+      "expressions": [
+        { "id": "mina_neutral", "label": "neutral", "file": "portraits.png" },
+        { "id": "mina_warm", "label": "warm", "file": "portraits.png" }
+      ]
+    },
+    {
+      "id": "daichi",
+      "name": "Daichi",
+      "expressions": [
+        { "id": "daichi_neutral", "label": "neutral", "file": "portraits.png" },
+        { "id": "daichi_anxious", "label": "anxious", "file": "portraits.png" }
+      ]
+    }
+  ]
+}
